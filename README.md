@@ -1,2 +1,4 @@
 # Group_Project1
-priority queue using max-heap
+Every Fall Semester a graduate course in Algorithms For Data Science is offered at New College.  Enrollment is limited to 25 students and graduate students, undergraduate students and auditors are eligible to apply for a place in the class.  Graduate students are given priority for enrollment, assuming they register by the end of orientation week.  Undergraduates are given second priority and amongst undergraduates, priority is determined by whether the student is majoring in CS and/or math, what year they are in and what day of orientation (1-5 inclusive) they register, in that order.  Auditors are permitted assuming there remain open seats, and priority is determined by what day of orientation (1-5 inclusive) they apply.  If any admitted student drops the class before the end of the second week of class, the open position is offered to the most qualified person who was not previously offered a place in the class.   
+
+The problem:  implement an algorithm that automates the admission decisions for the class. 
