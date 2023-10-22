@@ -20,68 +20,90 @@ Create an algorithm that takes in a students and order them based off thier prio
    
 6. If any admitted student drops the class before the end of the second week of class, the open position is offered to the most qualified person who was not previously offered a place in the class.
 
-## Key Classes
-
-### `Node`
-
-The `Node` class represents a node in the AVL tree. It contains information about a student's registration and related details, as follows:
-
-- `name`: Student's name
-- `major`: Student's major
-- `year`: The year the student is in
-- `reg_day`: Registration day
-- `priority`: Priority value used for comparison and determining order
-- `left`: Reference to the left child node
-- `right`: Reference to the right child node
-- `height`: The height of the node in the tree (used for balancing)
-
-### `AVL_Tree`
-
-The `AVL_Tree` class manages the AVL tree structure and operations. It includes the following key functionalities:
-
-- `tree_height(node)`: Calculates the height of the subtree rooted at the given node.
-- Rotation methods (e.g., `left_left_rotation`, `right_right_rotation`, `left_right_rotation`, `right_left_rotation`): Performs rotations to rebalance the tree.
-- `insert(parent_node, name, major, year, reg_day, priority)`: Inserts a new student into the AVL tree while maintaining balance.
-- `print_tree(node)`: Prints the tree in an order for visualization.
-
-### `stud_registration`
-
-The `stud_registration` class serves as the main application class to manage student registration. It handles student priority calculation and registration based on specific conditions. Key functionalities include:
-
-- `audit_priority(reg_day)`: Calculates the priority level for auditing students based on registration day.
-- `undgrad_priority(major, year, reg_day)`: Calculates the priority level for undergraduate students based on major, year, and registration day.
-- `register_student(name, major, year, reg_day)`: Registers students based on their major, year, and registration day while assigning priorities.
-
 ## Dependencies
-The script requires these Python Libraries:
 
-`pandas:` For data manipulation and anaylsis
+This program requires the following Python libraries:
+
+- `numpy` (aliased as `np`)
+- `matplotlib` (aliased as `plt`)
+- `pandas` (aliased as `pd`)
+- `random`
+
+Make sure you have these libraries installed to run the program successfully.
+
+## Structure
+
+The program consists of two main classes, `Node` and `AVL_Tree`, as well as a class `stud_registration` to manage the student registration process.
+
+## Key Classes
+### `class Node`
+
+The `Node` class represents a node in the AVL tree, which stores information about each student's registration and priority. It contains the following attributes:
+
+- `name`: Student's name.
+- `major`: Student's major.
+- `year`: The year the student is in.
+- `reg_day`: The day of registration.
+- `priority`: Priority value used for comparison-based analysis to develop priority.
+- `left`: Reference to the left child node.
+- `right`: Reference to the right child node.
+- `height`: Height of the node in the tree, used for tree balancing.
+
+### `class AVL_Tree`
+
+The `AVL_Tree` class represents the AVL tree structure and contains methods for managing the tree. It includes the following methods:
+
+- `tree_height(self, node)`: Calculates the height of a given subtree.
+- `left_left_rotation(self, node)`: Performs a left-left rotation to rebalance the tree.
+- `right_right_rotation(self, node)`: Performs a right-right rotation to rebalance the tree.
+- `left_right_rotation(self, node)`: Performs a left-right rotation to rebalance the tree.
+- `right_left_rotation(self, node)`: Performs a right-left rotation to rebalance the tree.
+- `insert(self, parent_node, name, major, year, reg_day, priority)`: Inserts a new student into the AVL tree based on priority.
+- `find_min(self, node)`: Finds the node with the minimum priority in a given subtree, used in deletion.
+- `delete_node(self, node, identifier)`: Deletes a student node from the tree by unique identifier.
+- `set_identifier(self, node, N, name_to_identifier)`: Assigns unique identifiers to nodes for efficient deletion.
+- `print_tree(self, node, admitted_students, max_students)`: Populates a list with students in descending order of priority.
+
+### `class stud_registration`
+
+The `stud_registration` class manages the student registration process. It contains the following methods:
+
+- `student_priority(self, major, year, reg_day)`: Calculates the priority value for a student based on major, year, and registration day.
+- `register_student(self, name, year, reg_day, major)`: Registers a student in the AVL tree if they registered within the orientation period.
+- `remove_student(self, name, identifier)`: Removes a student from the AVL tree by their unique identifier.
+- `get_student_dataframe(self, max_students)`: Retrieves a DataFrame of admitted students with a specified maximum count.
+- Initialization: Creates an instance of the AVL tree to manage student registration.
 
 ## Usage
 
-The main part of the code demonstrates the use of the `stud_registration` class for student registration. Here are the steps to use the system:
+The program's main functionality can be executed in the `if __name__ == "__main__":` block at the end of the script. It demonstrates how to use the `stud_registration` class to register, remove, and retrieve student data.
 
-1. Create an instance of the `stud_registration` class.
-2. Use the `register_student` method to add students to the system.
-3. The system will handle prioritization and maintain balanced order for student registration.
-4. To view the lists of undergraduate and auditor students, use the `print_tree` method on the respective AVL tree instances (`undgrad_list` and `auditor_list`).
+## Example Data Generation
+
+The program generates random student data for testing purposes. You can change the number of students generated by modifying the `num_students` variable. The generated data includes random names, years, registration days, and majors.
 
 ```python
-if __name__ == "__main__":
-    reg_stud = stud_registration()
-
-    # Insert students
-    reg_stud.register_student('Alice', 'cs', 3, 3)
-    reg_stud.register_student('Bob', 'math', 2, 4)
-    reg_stud.register_student('Charlie', 'art', 2, 1)
-    reg_stud.register_student('David', 'cs', 3, 2)
-    reg_stud.register_student('Eve', 'art', 5, 1)
-    reg_stud.register_student('Frank', 'cs', 0, 1)
-
-    print("Undgrad List:")
-    reg_stud.undgrad_list.print_tree(reg_stud.undgrad_list.root)
-
-    print("Auditor List:")
-    reg_stud.auditor_list.print_tree(reg_stud.auditor_list.root)
+random_students = [generate_random_student() for _ in range(num_students)]
 ```
 
+## Remove a Student
+
+To remove a student, you can use the `remove_student` method by specifying the student's name and unique identifier.
+
+```python
+stud = 'student7'
+if stud in name_to_identifier:
+    identifier = name_to_identifier[stud]
+    reg_stud.remove_student(stud, identifier)
+```
+
+## Get Admitted Students
+
+You can retrieve a DataFrame of admitted students with a specified maximum count by using the `get_student_dataframe` method.
+
+```python
+admitted = reg_stud.get_student_dataframe()
+print(admitted)
+```
+
+This program provides a foundation for managing student registration and maintaining a priority list based on various criteria. You can further adapt and extend it for specific use cases and requirements.
