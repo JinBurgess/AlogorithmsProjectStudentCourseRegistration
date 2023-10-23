@@ -5,7 +5,7 @@
 
 ## Introduction
 
-The Student Registration System is designed to manage and prioritize student registration based on their major, year, and registration day. It employs an AVL (Adelson-Velsky and Landis) tree data structure to efficiently manage student registration and maintain a balanced order. This system can handle undergraduate students and auditors.
+The Student Registration System is designed to manage and prioritize student registration based on their major, year, and registration day. It employs an AVL (Adelson-Velsky and Landis) tree data structure to efficiently manage student registration and maintain a balanced order. This system can handle all students who identify as graduates, undergraduates, and auditors.
 
 ## Overview
 Create an algorithm that takes in a students and order them based off thier prioirty in order to determine who will be admitted into the Fall semester graduate course for Data Science. Enrollment is limited to 25 students and graduate students, undergraduate students, and auditors are eligible to apply for a place in the class. The algorithms will be able to update for students who are added and those who drop the course. 
