@@ -1,7 +1,3003 @@
+
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import random
+
+# class Node deals with the information about the relation and information that each node contains 
+class Node:
+    def __init__(self, name, major, year, reg_day, priority):
+        self.name = name # student's name
+        self.major = major # major of the student
+        self.year = year # the year the student is in
+        self.reg_day = reg_day # day of registration 
+        self.priority = priority # used in comparsion based analysis for developing priority 
+
+        # when inputing a node there is no child attached 
+        self.left = None 
+        self.right = None
+        self.height = 1 # will be used to help determine rebalancing 
+
+# class AVL_Tree contains information about the structure of AVL_Tree and how to maintain it
+# such as the rotation, insertion, and deletion form the tree
+class AVL_Tree:
+    def __init__(self):
+        self.root = None # initially, the tree is empty because we have not put in any new students 
+
+    # determines the tree height of each subtree, helps to determine if the subtree needs to be rotated and in which direction
+    def tree_height(self, node):
+        if node is None:
+            return 0
+        left_height = self.tree_height(node.left) # getting the height of the left subtree
+        right_height = self.tree_height(node.right) # getting the height of the right subtree
+        return max(left_height, right_height) + 1 # return the subtree which has the largest depth (adding 1 since we start our count at 0)
+    
+    def left_left_rotation(self, node):
+        if node is not None and node.right is not None:
+            new_parent = node.right # setting the right child as the pivot/new parent
+            temp_var = new_parent.left # temparary variable that will be reattached when tree has been rotated
+            new_parent.left = node # setting parent node as left child
+            node.right = temp_var # since the node is going to be smaller than the temp var, it is going to be placed as right child
+
+            # since we repositioned the parent node and the right child's position, we need to update the height of each
+            node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1 
+            new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+            # return the new_parent for recalculation to see if the tree is now balanced
+            return new_parent
+        else:
+            return node
+        
+    def right_right_rotation(self, node):
+        if node is not None and node.left is not None:
+            new_parent = node.left # setting the left child as the pivot/new parent
+            temp_var = new_parent.right # temparary variable that will be reattached when tree has been rotated
+            new_parent.right = node # setting parent node as right child
+            node.left = temp_var # since the node is going to be bigger than the temp var, it is going to be placed as left child
+
+            # since we repositioned the parent node and the right child's position, we need to update the height of each
+            node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1
+            new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+            # return the new_parent for recalculation to see if the tree is now balanced
+            return new_parent
+        else:
+            return node
+
+    def left_right_rotation(self, node):
+        node.left = self.left_left_rotation(node.left)
+        return self.right_right_rotation(node)
+
+    def right_left_rotation(self, node):
+        node.right = self.right_right_rotation(node.right)
+        return self.left_left_rotation(node)
+ 
+    # inserting a new student into the AVL tree
+    def insert(self, parent_node, name, major, year, reg_day, priority):
+        # set the student to the root node if it is going to be ther first thing in the list 
+        if parent_node is None:
+            # in here we care using the node class to create the root node
+            return Node(name, major, year, reg_day, priority)  
+
+        # We are inserting the following students based on their priority value
+        # the new student has a lower priority value than the students already in the tree
+        if priority < parent_node.priority:
+            parent_node.left = self.insert(parent_node.left, name, major, year, reg_day, priority)
+            
+        # the new student has a higher priority value than the students already in the tree
+        else:
+            parent_node.right = self.insert(parent_node.right, name, major, year, reg_day, priority)
+
+        # once we add the new node we need to update the height of our tree that will be used to determine 
+        # balance of our new tree
+        parent_node.height = max(self.tree_height(parent_node.left), self.tree_height(parent_node.right)) + 1
+       
+        # if the balance is greater than 1 or smaller than -1 (so 2 or -2) means we are no longer balanced 
+        # thus we need to rotate the nodes to rebalance the tree such that it is between -1>= x =<1
+        balance = self.tree_height(parent_node.left) - self.tree_height(parent_node.right)
+        
+        # there is a string of left child that outweighs how many right child there is in the subtree
+        if balance > 1:
+            if priority < parent_node.left.priority:
+                return self.right_right_rotation(parent_node)
+            else:
+                return self.left_right_rotation(parent_node)
+            
+        # there is a string of right child that outweighs how many left child there is in the subtree
+        if balance < -1:
+            if priority > parent_node.right.priority:
+                return self.left_left_rotation(parent_node)
+            else:
+                return self.right_left_rotation(parent_node)
+
+        return parent_node
+    
+    # finding the lowest priority node in a given subarray that will be used in 
+    # the delete_node function
+    def find_min(self, node):
+        if node is None:
+            return None
+        
+        # only looking for left child node since they will contain the smaller priority
+        while node.left is not None:
+            node= node.left
+        return node
+    
+    # deleting students from tree
+    def delete_node(self, node, identifier):
+        if node is None: # making sure nodes exists for traversal
+            return node
+        if identifier < node.identifier: # going through left subtree if identifier is less than identifier of the parent node
+            node.left = self.delete_node(node.left, identifier)
+        elif identifier > node.identifier:
+            node.right = self.delete_node(node.right, identifier) # going through right subtree if identifier is greater than identifier of the parent node
+        else: # student that we want to delete is found
+            # looking to see where the child exist to see which node needs to be swapped with the one that is being removed 
+            if node.left is None: 
+                return node.right
+            elif node.right is None:
+                return node.left
+            temp = self.find_min(node.right) # getting the left most child of the right child and putting it into its position
+            # swaping the two nodes
+            node.name, node.major, node.year, node.reg_day, node.priority, node.identifier = temp.name, temp.major, temp.year, temp.reg_day, temp.priority, temp.identifier
+            node.right = self.delete_node(node.right, temp.identifier) # removing the node
+            node.height = 1 + max(self.tree_height(node.left), self.tree_height(node.right)) # adjusting hight
+        return node
+    
+    # setting unique identifier to nodes so we can traverse tree to delete
+    def set_identifier(self, node, N, name_to_identifier):
+        if node:
+            N= self.set_identifier(node.right, N, name_to_identifier) # getting higest priority student 
+            node.identifier = N # setting N which is number of nodes in tree to the node
+            name_to_identifier[node.name] = N # adding the asssocation between name and identifer to the dictionary
+            N = N - 1 
+            N = self.set_identifier(node.left, N, name_to_identifier) # getting lower priority student 
+        return N
+
+    # appending into a list, the students from the avl_ tree in descending order
+    def print_tree(self, node, admitted_students, max_students):
+
+        if node and len(admitted_students) < max_students: # making sure node exists and that we have not reached limit of list
+                self.print_tree(node.right, admitted_students,max_students) # getting the right most child (student with higher priority)
+                if len(admitted_students) < max_students: # making sure that we are not at limit of list
+
+                    # appending the information of the student node to the admitted list 
+                    admitted_students.append([node.name, node.major, 
+                                        node.year, 
+                                        node.reg_day, 
+                                        node.priority,
+                                        ])
+                self.print_tree(node.left, admitted_students,max_students) # getting the right most child (student with lesser priority)
+
+
+class stud_registration:
+    def __init__(self):
+        self.registration_list = AVL_Tree() # prioritization structure of students
+
+        
+    # updates the student_dict when a new student is added to the tree
+
+
+# Student Priority Code
+# Code by Sabrina Harris
+################################################################################################################################################
+    def student_priority(self, major, year, reg_day):
+        level = 0 #reset the level for each function call
+        if year == 0: #for auditors
+            level = level + (.5-(.1*(reg_day))) # level will equal 0.5 for registrations before orientation week, 0.4 for registrations on the first day, etc.
+          
+        elif year <5: # for undergraduate students
+            if major == 'cs' or major == 'math' or major == 'ds':
+                level = level+10 # adds 10 to the level for cs or math majors,
+            level = level + year # adds 1,2,3, or 4 to the level based on the year.
+            level = level +(.5-(.1*(reg_day))) #+0.5 for students registered before the orientation week, same as for auditors.
+            
+        else:
+            level = 15 #for graduate students, level will automatically be 15.
+        return level
+    
+################################################################################################################################################
+
+    # adding new student to the AVL tree so long as they registered within the orientation period
+    def register_student(self, name, year, reg_day, major):
+        if int(reg_day) < 6:
+            priority = self.student_priority(major, year, reg_day) # caluclte their priority
+            self.registration_list.root = self.registration_list.insert(self.registration_list.root, name, major, year, reg_day, priority)
+            
+    # we are removing students based on the dictionary list. I am not updating tree because
+    # I am running under the assumption that the class has already started and we already of a waitlist which is captured 
+    # in the dictionary
+    def remove_student(self, identifier):
+        self.registration_list.root = self.registration_list.delete_node(self.registration_list.root, identifier)
+
+    # creates a dataframe that returns the 25 admitted students 
+    def get_student_dataframe(self, max_students = 25):
+        admitted_students = [] # list of admitted students 
+        # calls this function to iterate through AVL tree and list students in descending order
+        self.registration_list.print_tree(self.registration_list.root, admitted_students, max_students)
+
+        # getting column for each data frame
+        columns = ['Name', 'Major', 'Year', 'Reg Day', 'Priority'] # column names
+
+        # return dataframe 
+        return pd.DataFrame(admitted_students, columns=columns)
+    
+    
+# Code by Jin YuHan Burgess
+
+if __name__ == "__main__":
+    reg_stud = stud_registration()
+
+    random.seed(101) # set.seed for testing 
+
+    # List of possible majors
+    majors = ['cs', 'math', 'other', 'ds']
+
+    # Function to generate a random student
+    def generate_random_student(indx):
+        name = f"student{indx}" # Random student name
+        year = random.randint(1, 6) # Random year (greater than 0)
+        if year == 0:
+            major = 'none' # these are auditors
+        elif year > 4:
+            major = 'ds' # data science is the major so those in graduate program are on this track
+        else:
+            major = random.choice(majors) # Random major
+        reg_day = random.randint(0, 10) # Random registration day (greater than or equal to 0)
+
+        return name, year, reg_day, major
+
+
+    # Generate a list of random students
+    num_students = 50 # Change this to the number of students you want
+    random_students = [generate_random_student(indx) for indx in range(num_students)] # under score in for_ in... represents that the loop variable is not needed
+
+
+    # Print the generated students
+    for student in random_students:
+        reg_stud.register_student(student[0], student[1], student[2], student[3])
+    
+    name_to_identifier = {} # creating dictionary between unique identifier and student name (unique identifier is based on the location it is within the avl_tree)
+
+    # once all the insertions are done, we set unique identifiers to each student. Students with highest priority are considered right most child and will have a higher number
+    # identification and vice versa for lowest priority students 
+    x = reg_stud.registration_list.set_identifier(reg_stud.registration_list.root, int(num_students), name_to_identifier) 
+
+
+    admitted = reg_stud.get_student_dataframe()
+    print(admitted)
+
+    random.seed(101)
+
+    x = admitted.sample(n = 3, replace = False)
+    print(x)
+
+
+    random.seed(101)
+    for indx in range(len(x)):
+        stud = x._get_value(indx, 0, takeable = True) # gets student name from the sample 
+        identifier = name_to_identifier[stud] # finds the identifer that is attached to the student
+        reg_stud.remove_student(identifier) # remove student based of their identifier
+                
+    # return updated dataframe
+    admitted = reg_stud.get_student_dataframe()
+    print(admitted)
+
+# Code by Jin YuHan Burgess
+
+# Code by Jin YuHan Burgess
+# This line of code clearly shows students who register within the orientation are admitted while those who do not sign up within the orientation period are not admitted. I set both students as the highest priority of Graduate student where one registered within the orientation while the other did not. 
+    reg_stud.register_student('student0', 6, 6,'ds') 
+    reg_stud.register_student('student01', 6, 0,'ds')
+
+    admitted = reg_stud.get_student_dataframe()
+    print(admitted)
+
+# Code by Jin YuHan Burgess
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import numpy as np
+import matplotlib as plt
+import pandas as pd
+import random
+
+
+# class Node deals with the information about the relation and information that each node contains 
+class Node:
+    def __init__(self, name, major, year, reg_day, priority):
+        self.name = name # student's name
+        self.major = major # major of the student
+        self.year = year # the year the student is in
+        self.reg_day = reg_day # day of registration 
+        self.priority = priority # used in comparsion based analysis for developing priority 
+
+        # when inputing a node there is no child attached 
+        self.left = None 
+        self.right = None
+        self.height = 1 # will be used to help determine rebalancing 
+
+# class AVL_Tree contains information about the structure of AVL_Tree and how to maintain it
+# such as the rotation, insertion, and deletion form the tree
+class AVL_Tree:
+    def __init__(self):
+        self.root = None # initially, the tree is empty because we have not put in any new students 
+
+    # determines the tree height of each subtree, helps to determine if the subtree needs to be rotated and in which direction
+    def tree_height(self, node):
+        if node is None:
+            return 0
+        left_height = self.tree_height(node.left) # getting the height of the left subtree
+        right_height = self.tree_height(node.right) # getting the height of the right subtree
+        return max(left_height, right_height) + 1 # return the subtree which has the largest depth (adding 1 since we start our count at 0)
+    
+    def left_left_rotation(self, node):
+        if node is not None and node.right is not None:
+            new_parent = node.right # setting the right child as the pivot/new parent
+            temp_var = new_parent.left # temparary variable that will be reattached when tree has been rotated
+            new_parent.left = node # setting parent node as left child
+            node.right = temp_var # since the node is going to be smaller than the temp var, it is going to be placed as right child
+
+            # since we repositioned the parent node and the right child's position, we need to update the height of each
+            node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1 
+            new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+            # return the new_parent for recalculation to see if the tree is now balanced
+            return new_parent
+        else:
+            return node
+        
+    def right_right_rotation(self, node):
+        if node is not None and node.left is not None:
+            new_parent = node.left # setting the left child as the pivot/new parent
+            temp_var = new_parent.right # temparary variable that will be reattached when tree has been rotated
+            new_parent.right = node # setting parent node as right child
+            node.left = temp_var # since the node is going to be bigger than the temp var, it is going to be placed as left child
+
+            # since we repositioned the parent node and the right child's position, we need to update the height of each
+            node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1
+            new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+            # return the new_parent for recalculation to see if the tree is now balanced
+            return new_parent
+        else:
+            return node
+
+    def left_right_rotation(self, node):
+        node.left = self.left_left_rotation(node.left)
+        return self.right_right_rotation(node)
+
+    def right_left_rotation(self, node):
+        node.right = self.right_right_rotation(node.right)
+        return self.left_left_rotation(node)
+ 
+    # inserting a new student into the AVL tree
+    def insert(self, parent_node, name, major, year, reg_day, priority):
+        # set the student to the root node if it is going to be ther first thing in the list 
+        if parent_node is None:
+            # in here we care using the node class to create the root node
+            return Node(name, major, year, reg_day, priority)  
+
+        # We are inserting the following students based on their priority value
+        # the new student has a lower priority value than the students already in the tree
+        if priority < parent_node.priority:
+            parent_node.left = self.insert(parent_node.left, name, major, year, reg_day, priority)
+            
+        # the new student has a higher priority value than the students already in the tree
+        else:
+            parent_node.right = self.insert(parent_node.right, name, major, year, reg_day, priority)
+
+        # once we add the new node we need to update the height of our tree that will be used to determine 
+        # balance of our new tree
+        parent_node.height = max(self.tree_height(parent_node.left), self.tree_height(parent_node.right)) + 1
+       
+        # if the balance is greater than 1 or smaller than -1 (so 2 or -2) means we are no longer balanced 
+        # thus we need to rotate the nodes to rebalance the tree such that it is between -1>= x =<1
+        balance = self.tree_height(parent_node.left) - self.tree_height(parent_node.right)
+        
+        # there is a string of left child that outweighs how many right child there is in the subtree
+        if balance > 1:
+            if priority < parent_node.left.priority:
+                return self.right_right_rotation(parent_node)
+            else:
+                return self.left_right_rotation(parent_node)
+            
+        # there is a string of right child that outweighs how many left child there is in the subtree
+        if balance < -1:
+            if priority > parent_node.right.priority:
+                return self.left_left_rotation(parent_node)
+            else:
+                return self.right_left_rotation(parent_node)
+
+        return parent_node
+    
+    # finding the lowest priority node in a given subarray that will be used in 
+    # the delete_node function
+    def find_min(self, node):
+        if node is None:
+            return None
+        
+        # only looking for left child node since they will contain the smaller priority
+        while node.left is not None:
+            node= node.left
+        return node
+    
+    # deleting students from tree
+    def delete_node(self, node, identifier):
+        if node is None: # making sure nodes exists for traversal
+            return node
+        if identifier < node.identifier: # going through left subtree if identifier is less than identifier of the parent node
+            node.left = self.delete_node(node.left, identifier)
+        elif identifier > node.identifier:
+            node.right = self.delete_node(node.right, identifier) # going through right subtree if identifier is greater than identifier of the parent node
+        else: # student that we want to delete is found
+            # looking to see where the child exist to see which node needs to be swapped with the one that is being removed 
+            if node.left is None: 
+                return node.right
+            elif node.right is None:
+                return node.left
+            temp = self.find_min(node.right) # getting the left most child of the right child and putting it into its position
+            # swaping the two nodes
+            node.name, node.major, node.year, node.reg_day, node.priority, node.identifier = temp.name, temp.major, temp.year, temp.reg_day, temp.priority, temp.identifier
+            node.right = self.delete_node(node.right, temp.identifier) # removing the node
+            node.height = 1 + max(self.tree_height(node.left), self.tree_height(node.right)) # adjusting hight
+        return node
+    
+    # setting unique identifier to nodes so we can traverse tree to delete
+    def set_identifier(self, node, N, name_to_identifier):
+        if node:
+            N= self.set_identifier(node.right, N, name_to_identifier) # getting higest priority student 
+            node.identifier = N # setting N which is number of nodes in tree to the node
+            name_to_identifier[node.name] = N # adding the asssocation between name and identifer to the dictionary
+            N = N - 1 
+            N = self.set_identifier(node.left, N, name_to_identifier) # getting lower priority student 
+        return N
+
+    # appending into a list, the students from the avl_ tree in descending order
+    def print_tree(self, node, admitted_students, max_students):
+
+        if node and len(admitted_students) < max_students: # making sure node exists and that we have not reached limit of list
+                self.print_tree(node.right, admitted_students,max_students) # getting the right most child (student with higher priority)
+                if len(admitted_students) < max_students: # making sure that we are not at limit of list
+
+                    # appending the information of the student node to the admitted list 
+                    admitted_students.append([node.name, node.major, 
+                                        node.year, 
+                                        node.reg_day, 
+                                        node.priority,
+                                        ])
+                self.print_tree(node.left, admitted_students,max_students) # getting the right most child (student with lesser priority)
+
+
+class stud_registration:
+    def __init__(self):
+        self.registration_list = AVL_Tree() # prioritization structure of students
+
+        
+    # updates the student_dict when a new student is added to the tree
+
+
+# Student Priority Code
+# Code by Sabrina Harris
+################################################################################################################################################
+    def student_priority(self, major, year, reg_day):
+        level = 0 #reset the level for each function call
+        if year == 0: #for auditors
+            level = level + (.5-(.1*(reg_day))) # level will equal 0.5 for registrations before orientation week, 0.4 for registrations on the first day, etc.
+          
+        elif year <5: # for undergraduate students
+            if major == 'cs' or major == 'math' or major == 'ds':
+                level = level+10 # adds 10 to the level for cs or math majors,
+            level = level + year # adds 1,2,3, or 4 to the level based on the year.
+            level = level +(.5-(.1*(reg_day))) #+0.5 for students registered before the orientation week, same as for auditors.
+            
+        else:
+            level = 15 #for graduate students, level will automatically be 15.
+        return level
+    
+################################################################################################################################################
+
+    # adding new student to the AVL tree so long as they registered within the orientation period
+    def register_student(self, name, year, reg_day, major):
+        if int(reg_day) < 6:
+            priority = self.student_priority(major, year, reg_day) # caluclte their priority
+            self.registration_list.root = self.registration_list.insert(self.registration_list.root, name, major, year, reg_day, priority)
+            
+    # we are removing students based on the dictionary list. I am not updating tree because
+    # I am running under the assumption that the class has already started and we already of a waitlist which is captured 
+    # in the dictionary
+    def remove_student(self, name, identifier):
+        self.registration_list.root = self.registration_list.delete_node(self.registration_list.root, identifier)
+
+    # creates a dataframe that returns the 25 admitted students 
+    def get_student_dataframe(self, max_students = 25):
+        admitted_students = [] # list of admitted students 
+        # calls this function to iterate through AVL tree and list students in descending order
+        self.registration_list.print_tree(self.registration_list.root, admitted_students, max_students)
+
+        # getting column for each data frame
+        columns = ['Name', 'Major', 'Year', 'Reg Day', 'Priority'] # column names
+
+        # return dataframe 
+        return pd.DataFrame(admitted_students, columns=columns)
+    
+if __name__ == "__main__":
+    reg_stud = stud_registration()
+
+    random.seed(101) # set.seed for testing 
+
+    # List of possible majors
+    majors = ['cs', 'math', 'other', 'ds']
+
+    # Function to generate a random student
+    def generate_random_student(indx):
+        name = f"student{indx}" # Random student name
+        year = random.randint(1, 6) # Random year (greater than 0)
+        if year == 0:
+            major = 'none' # these are auditors
+        elif year > 4:
+            major = 'ds' # data science is the major so those in graduate program are on this track
+        else:
+            major = random.choice(majors) # Random major
+        reg_day = random.randint(0, 10) # Random registration day (greater than or equal to 0)
+
+        return name, year, reg_day, major
+    
+
+    def time_insertion(num_students):
+            random_students = [generate_random_student(indx) for indx in range(num_students)]
+            for student in random_students:
+                reg_stud.register_student(student[0], student[1], student[2], student[3])
+
+    num_students_range = range(1, 100, 1)
+    RT_result = []
+
+    for num_students in num_students_range:
+        execution_time = timeit.timeit("time_insertion(num_students)", globals=globals(), number=1)
+        RT_result.append(execution_time)
+    name_to_identifier = {} # creating dictionary between unique identifier and student name (unique identifier is based on the location it is within the avl_tree)
+
+    # once all the insertions are done, we set unique identifiers to each student. Students with highest priority are considered right most child and will have a higher number
+    # identification and vice versa for lowest priority students 
+    x = reg_stud.registration_list.set_identifier(reg_stud.registration_list.root, int(num_students), name_to_identifier) 
+
+
+    admitted = reg_stud.get_student_dataframe()
+    print(admitted)
+
+# Code by Jin YuHan Burgess
+# infomration used in timeit function https://note.nkmk.me/en/python-timeit-measure/#:~:text=timeit()%20as%20a%20string,()%20as%20the%20globals%20argument.
+
+
+# if __name__ == "__main__":
+#     reg_stud = stud_registration()
+
+#     random.seed(101) # set.seed for testing 
+
+#     # List of possible majors
+#     majors = ['cs', 'math', 'other', 'ds']
+
+#     # Function to generate a random student
+#     def generate_random_student(indx):
+#         name = f"student{indx}" # Random student name
+#         year = random.randint(1, 6) # Random year (greater than 0)
+#         if year == 0:
+#             major = 'none' # these are auditors
+#         elif year > 4:
+#             major = 'ds' # data science is the major so those in graduate program are on this track
+#         else:
+#             major = random.choice(majors) # Random major
+#         reg_day = random.randint(0, 10) # Random registration day (greater than or equal to 0)
+
+#         return name, year, reg_day, major
+
+
+#     # Generate a list of random students
+#     num_students = 50 # Change this to the number of students you want
+#     random_students = [generate_random_student(indx) for indx in range(num_students)] # under score in for_ in... represents that the loop variable is not needed
+
+
+#     # Print the generated students
+#     for student in random_students:
+#         reg_stud.register_student(student[0], student[1], student[2], student[3])
+    
+#     # comparing to show that students that register after orientation day are not counted 
+#     reg_stud.register_student('student0', 6, 6,'ds') 
+#     reg_stud.register_student('student01', 6, 0,'ds')
+
+
+#     name_to_identifier = {} # creating dictionary between unique identifier and student name (unique identifier is based on the location it is within the avl_tree)
+
+#     # once all the insertions are done, we set unique identifiers to each student. Students with highest priority are considered right most child and will have a higher number
+#     # identification and vice versa for lowest priority students 
+#     x = reg_stud.registration_list.set_identifier(reg_stud.registration_list.root, int(num_students), name_to_identifier) 
+
+
+    # admitted = reg_stud.get_student_dataframe()
+    # print(admitted)
+    # stud = 'student37'
+    # x = admitted.sample()
+    
+    # print(x)
+    # if stud in name_to_identifier:
+    #     identifier = name_to_identifier[stud]
+    #     reg_stud.remove_student(stud, identifier)
+
+            
+    # admitted = reg_stud.get_student_dataframe()
+    # print(admitted)
+
+# Code by Jin YuHan Burgess
+
+# class Node deals with the information about the relation and information that each node contains 
+class Node:
+    def __init__(self, name, major, year, reg_day, priority):
+        self.name = name # student's name
+        self.major = major # major of the student
+        self.year = year # the year the student is in
+        self.reg_day = reg_day # day of registration 
+        self.priority = priority # used in comparsion based analysis for developing priority 
+
+        # when inputing a node there is no child attached 
+        self.left = None 
+        self.right = None
+        self.height = 1 # will be used to help determine rebalancing 
+
+# class AVL_Tree contains information about the structure of AVL_Tree and how to maintain it
+# such as the rotation, insertion, and deletion form the tree
+class AVL_Tree:
+    def __init__(self):
+        self.root = None # initially, the tree is empty because we have not put in any new students 
+
+    # determines the tree height of each subtree, helps to determine if the subtree needs to be rotated and in which direction
+    def tree_height(self, node):
+        if node is None:
+            return 0
+        left_height = self.tree_height(node.left) # getting the height of the left subtree
+        right_height = self.tree_height(node.right) # getting the height of the right subtree
+        return max(left_height, right_height) + 1 # return the subtree which has the largest depth (adding 1 since we start our count at 0)
+    
+    def left_left_rotation(self, node):
+        if node is not None and node.right is not None:
+            new_parent = node.right # setting the right child as the pivot/new parent
+            temp_var = new_parent.left # temparary variable that will be reattached when tree has been rotated
+            new_parent.left = node # setting parent node as left child
+            node.right = temp_var # since the node is going to be smaller than the temp var, it is going to be placed as right child
+
+            # since we repositioned the parent node and the right child's position, we need to update the height of each
+            node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1 
+            new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+            # return the new_parent for recalculation to see if the tree is now balanced
+            return new_parent
+        else:
+            return node
+        
+    def right_right_rotation(self, node):
+        if node is not None and node.left is not None:
+            new_parent = node.left # setting the left child as the pivot/new parent
+            temp_var = new_parent.right # temparary variable that will be reattached when tree has been rotated
+            new_parent.right = node # setting parent node as right child
+            node.left = temp_var # since the node is going to be bigger than the temp var, it is going to be placed as left child
+
+            # since we repositioned the parent node and the right child's position, we need to update the height of each
+            node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1
+            new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+            # return the new_parent for recalculation to see if the tree is now balanced
+            return new_parent
+        else:
+            return node
+
+    def left_right_rotation(self, node):
+        node.left = self.left_left_rotation(node.left)
+        return self.right_right_rotation(node)
+
+    def right_left_rotation(self, node):
+        node.right = self.right_right_rotation(node.right)
+        return self.left_left_rotation(node)
+ 
+    # inserting a new student into the AVL tree
+    def insert(self, parent_node, name, major, year, reg_day, priority):
+        # set the student to the root node if it is going to be ther first thing in the list 
+        if parent_node is None:
+            # in here we care using the node class to create the root node
+            return Node(name, major, year, reg_day, priority)  
+
+        # We are inserting the following students based on their priority value
+        # the new student has a lower priority value than the students already in the tree
+        if priority < parent_node.priority:
+            parent_node.left = self.insert(parent_node.left, name, major, year, reg_day, priority)
+            
+        # the new student has a higher priority value than the students already in the tree
+        else:
+            parent_node.right = self.insert(parent_node.right, name, major, year, reg_day, priority)
+
+        # once we add the new node we need to update the height of our tree that will be used to determine 
+        # balance of our new tree
+        parent_node.height = max(self.tree_height(parent_node.left), self.tree_height(parent_node.right)) + 1
+       
+        # if the balance is greater than 1 or smaller than -1 (so 2 or -2) means we are no longer balanced 
+        # thus we need to rotate the nodes to rebalance the tree such that it is between -1>= x =<1
+        balance = self.tree_height(parent_node.left) - self.tree_height(parent_node.right)
+        
+        # there is a string of left child that outweighs how many right child there is in the subtree
+        if balance > 1:
+            if priority < parent_node.left.priority:
+                return self.right_right_rotation(parent_node)
+            else:
+                return self.left_right_rotation(parent_node)
+            
+        # there is a string of right child that outweighs how many left child there is in the subtree
+        if balance < -1:
+            if priority > parent_node.right.priority:
+                return self.left_left_rotation(parent_node)
+            else:
+                return self.right_left_rotation(parent_node)
+
+        return parent_node
+    
+    # finding the lowest priority node in a given subarray that will be used in 
+    # the delete_node function
+    def find_min(self, node):
+        if node is None:
+            return None
+        
+        # only looking for left child node since they will contain the smaller priority
+        while node.left is not None:
+            node= node.left
+        return node
+    
+    # deleting students from tree
+    def delete_node(self, node, identifier):
+        if node is None: # making sure nodes exists for traversal
+            return node
+        if identifier < node.identifier: # going through left subtree if identifier is less than identifier of the parent node
+            node.left = self.delete_node(node.left, identifier)
+        elif identifier > node.identifier:
+            node.right = self.delete_node(node.right, identifier) # going through right subtree if identifier is greater than identifier of the parent node
+        else: # student that we want to delete is found
+            # looking to see where the child exist to see which node needs to be swapped with the one that is being removed 
+            if node.left is None: 
+                return node.right
+            elif node.right is None:
+                return node.left
+            temp = self.find_min(node.right) # getting the left most child of the right child and putting it into its position
+            # swaping the two nodes
+            node.name, node.major, node.year, node.reg_day, node.priority, node.identifier = temp.name, temp.major, temp.year, temp.reg_day, temp.priority, temp.identifier
+            node.right = self.delete_node(node.right, temp.identifier) # removing the node
+            node.height = 1 + max(self.tree_height(node.left), self.tree_height(node.right)) # adjusting hight
+        return node
+    
+    # setting unique identifier to nodes so we can traverse tree to delete
+    def set_identifier(self, node, N, name_to_identifier):
+        if node:
+            N= self.set_identifier(node.right, N, name_to_identifier) # getting higest priority student 
+            node.identifier = N # setting N which is number of nodes in tree to the node
+            name_to_identifier[node.name] = N # adding the asssocation between name and identifer to the dictionary
+            N = N - 1 
+            N = self.set_identifier(node.left, N, name_to_identifier) # getting lower priority student 
+        return N
+
+    # appending into a list, the students from the avl_ tree in descending order
+    def print_tree(self, node, admitted_students, max_students):
+
+        if node and len(admitted_students) < max_students: # making sure node exists and that we have not reached limit of list
+                self.print_tree(node.right, admitted_students,max_students) # getting the right most child (student with higher priority)
+                if len(admitted_students) < max_students: # making sure that we are not at limit of list
+
+                    # appending the information of the student node to the admitted list 
+                    admitted_students.append([node.name, node.major, 
+                                        node.year, 
+                                        node.reg_day, 
+                                        node.priority,
+                                        ])
+                self.print_tree(node.left, admitted_students,max_students) # getting the right most child (student with lesser priority)
+
+
+class stud_registration:
+    def __init__(self):
+        self.registration_list = AVL_Tree() # prioritization structure of students
+
+        
+    # updates the student_dict when a new student is added to the tree
+
+    def student_priority(self, major, year, reg_day):
+        level = 0 #reset the level for each function call
+        if year == 0: #for auditors
+            level = level + (.5-(.1*(reg_day))) # level will equal 0.5 for registrations before orientation week, 0.4 for registrations on the first day, etc.
+          
+        elif year <5: # for undergraduate students
+            if major == 'cs' or major == 'math' or major == 'ds':
+                level = level+10 # adds 10 to the level for cs or math majors,
+            level = level + year # adds 1,2,3, or 4 to the level based on the year.
+            level = level +(.5-(.1*(reg_day))) #+0.5 for students registered before the orientation week, same as for auditors.
+            
+        else:
+            level = 15 #for graduate students, level will automatically be 15.
+        return level
+
+    # adding new student to the AVL tree so long as they registered within the orientation period
+    def register_student(self, name, year, reg_day, major):
+        if int(reg_day) < 6:
+            priority = self.student_priority(major, year, reg_day) # caluclte their priority
+            self.registration_list.root = self.registration_list.insert(self.registration_list.root, name, major, year, reg_day, priority)
+            
+    # we are removing students based on the dictionary list. I am not updating tree because
+    # I am running under the assumption that the class has already started and we already of a waitlist which is captured 
+    # in the dictionary
+    def remove_student(self, name, identifier):
+        self.registration_list.root = self.registration_list.delete_node(self.registration_list.root, identifier)
+
+    # creates a dataframe that returns the 25 admitted students 
+    def get_student_dataframe(self, max_students = 25):
+        admitted_students = [] # list of admitted students 
+        # calls this function to iterate through AVL tree and list students in descending order
+        self.registration_list.print_tree(self.registration_list.root, admitted_students, max_students)
+
+        # getting column for each data frame
+        columns = ['Name', 'Major', 'Year', 'Reg Day', 'Priority'] # column names
+
+        # return dataframe 
+        return pd.DataFrame(admitted_students, columns=columns)
+    
+
+if __name__ == "__main__":
+    reg_stud = stud_registration()
+
+    random.seed(101) # set.seed for testing 
+
+    # List of possible majors
+    majors = ['cs', 'math', 'other', 'ds']
+
+    # Function to generate a random student
+    def generate_random_student():
+        name = f"student{random.randint(1, 100)}" # Random student name
+        year = random.randint(1, 6) # Random year (greater than 0)
+        if year == 0:
+            major = 'none' # these are auditors
+        elif year > 4:
+            major = 'ds' # data science is the major so those in graduate program are on this track
+        else:
+            major = random.choice(majors) # Random major
+        reg_day = random.randint(0, 10) # Random registration day (greater than or equal to 0)
+
+        return name, year, reg_day, major
+
+
+    # Generate a list of random students
+    num_students = 50 # Change this to the number of students you want
+    random_students = [generate_random_student() for _ in range(num_students)] # under score in for_ in... represents that the loop variable is not needed
+
+
+    # Print the generated students
+    for student in random_students:
+        reg_stud.register_student(student[0], student[1], student[2], student[3])
+    
+    # comparing to show that students that register after orientation day are not counted 
+    reg_stud.register_student('student0', 6, 6,'ds') 
+    reg_stud.register_student('student01', 6, 0,'ds')
+
+
+    name_to_identifier = {} # creating dictionary between unique identifier and student name (unique identifier is based on the location it is within the avl_tree)
+
+    # once all the insertions are done, we set unique identifiers to each student. Students with highest priority are considered right most child and will have a higher number
+    # identification and vice versa for lowest priority students 
+    x = reg_stud.registration_list.set_identifier(reg_stud.registration_list.root, int(num_students), name_to_identifier) 
+
+
+    admitted = reg_stud.get_student_dataframe()
+    # print(admitted)
+    stud = 'student7'
+
+    if stud in name_to_identifier:
+        identifier = name_to_identifier[stud]
+        reg_stud.remove_student(stud, identifier)
+
+            
+    admitted = reg_stud.get_student_dataframe()
+    print(admitted)
+
+
+    ################################################################################################################################
+
+import numpy as np
+import matplotlib as plt
+import pandas as pd
+import random
+
+# class Node deals with the information about the relation and information that each node contains 
+class Node:
+    def __init__(self, name, major, year, reg_day, priority):
+        self.name = name # student's name
+        self.major = major # major of the student
+        self.year = year # the year the student is in
+        self.reg_day = reg_day # day of registration 
+        self.priority = priority # used in comparsion based analysis for developing priority 
+
+        # when inputing a node there is no child attached 
+        self.left = None 
+        self.right = None
+        self.height = 1 # will be used to help determine rebalancing 
+
+# class AVL_Tree contains information about the structure of AVL_Tree and how to maintain it
+# such as the rotation, insertion, and deletion form the tree
+class AVL_Tree:
+    def __init__(self):
+        self.root = None # initially, the tree is empty because we have not put in any new students 
+
+    # determines the tree height of each subtree, helps to determine if the subtree needs to be rotated and in which direction
+    def tree_height(self, node):
+        if node is None:
+            return 0
+        left_height = self.tree_height(node.left) # getting the height of the left subtree
+        right_height = self.tree_height(node.right) # getting the height of the right subtree
+        return max(left_height, right_height) + 1 # return the subtree which has the largest depth (adding 1 since we start our count at 0)
+    
+    def left_left_rotation(self, node):
+        if node is not None and node.right is not None:
+            new_parent = node.right # setting the right child as the pivot/new parent
+            temp_var = new_parent.left # temparary variable that will be reattached when tree has been rotated
+            new_parent.left = node # setting parent node as left child
+            node.right = temp_var # since the node is going to be smaller than the temp var, it is going to be placed as right child
+
+            # since we repositioned the parent node and the right child's position, we need to update the height of each
+            node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1 
+            new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+            # return the new_parent for recalculation to see if the tree is now balanced
+            return new_parent
+        else:
+            return node
+        
+    def right_right_rotation(self, node):
+        if node is not None and node.left is not None:
+            new_parent = node.left # setting the left child as the pivot/new parent
+            temp_var = new_parent.right # temparary variable that will be reattached when tree has been rotated
+            new_parent.right = node # setting parent node as right child
+            node.left = temp_var # since the node is going to be bigger than the temp var, it is going to be placed as left child
+
+            # since we repositioned the parent node and the right child's position, we need to update the height of each
+            node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1
+            new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+            # return the new_parent for recalculation to see if the tree is now balanced
+            return new_parent
+        else:
+            return node
+
+    def left_right_rotation(self, node):
+        node.left = self.left_left_rotation(node.left)
+        return self.right_right_rotation(node)
+
+    def right_left_rotation(self, node):
+        node.right = self.right_right_rotation(node.right)
+        return self.left_left_rotation(node)
+ 
+    # inserting a new student into the AVL tree
+    def insert(self, parent_node, name, major, year, reg_day, priority):
+        # set the student to the root node if it is going to be ther first thing in the list 
+        if parent_node is None:
+            # in here we care using the node class to create the root node
+            return Node(name, major, year, reg_day, priority)  
+
+        # We are inserting the following students based on their priority value
+        # the new student has a lower priority value than the students already in the tree
+        if priority < parent_node.priority:
+            parent_node.left = self.insert(parent_node.left, name, major, year, reg_day, priority)
+            
+        # the new student has a higher priority value than the students already in the tree
+        else:
+            parent_node.right = self.insert(parent_node.right, name, major, year, reg_day, priority)
+
+        # once we add the new node we need to update the height of our tree that will be used to determine 
+        # balance of our new tree
+        parent_node.height = max(self.tree_height(parent_node.left), self.tree_height(parent_node.right)) + 1
+       
+        # if the balance is greater than 1 or smaller than -1 (so 2 or -2) means we are no longer balanced 
+        # thus we need to rotate the nodes to rebalance the tree such that it is between -1>= x =<1
+        balance = self.tree_height(parent_node.left) - self.tree_height(parent_node.right)
+        
+        # there is a string of left child that outweighs how many right child there is in the subtree
+        if balance > 1:
+            if priority < parent_node.left.priority:
+                return self.right_right_rotation(parent_node)
+            else:
+                return self.left_right_rotation(parent_node)
+            
+        # there is a string of right child that outweighs how many left child there is in the subtree
+        if balance < -1:
+            if priority > parent_node.right.priority:
+                return self.left_left_rotation(parent_node)
+            else:
+                return self.right_left_rotation(parent_node)
+
+        return parent_node
+    
+        def find_min(self, node):
+            if node is None:
+                return None
+            while node.left is not None:
+                node= node.left
+            return node
+    
+    def delete_node(self, node, identifier):
+        if node is None:
+            return node
+        if identifier < node.identifier:
+            node.left = self.delete_node(node.left, identifier)
+        elif identifier > node.identifier:
+            node.right = self.delete_node(node.right, identifier)
+        else:
+            if node.left is None:
+                return node.right
+            elif node.right is None:
+                return node.left
+            temp = self._find_min(node.right)
+            node.name, node.major, node.year, node.reg_day, node.priority, node.identifier = temp.name, temp.major, temp.year, temp.reg_day, temp.priority, temp.identifier
+            node.right = self.delete_node(node.right, temp.identifier)
+            node.height = 1 + max(self.tree_height(node.left), self.tree_height(node.right))
+        return node
+    
+    def set_identifier(self, node, N, name_to_identifier):
+        if node:
+            N= self.set_identifier(node.right, N, name_to_identifier)
+            node.identifier = N 
+            name_to_identifier[node.name] = N
+            N = N - 1
+            N = self.set_identifier(node.left, N, name_to_identifier)
+        return N
+
+    def print_tree(self, node, admitted_students, max_students):
+        if node and len(admitted_students) < max_students:
+                self.print_tree(node.right, admitted_students,max_students)
+                if len(admitted_students) < max_students:
+                    admitted_students.append([node.name, node.major, 
+                                        node.year, 
+                                        node.reg_day, 
+                                        node.priority,
+                                        ])
+                # print(node.name, node.major, node.year, node.reg_day, node.priority, node.identifier)
+                self.print_tree(node.left, admitted_students,max_students)
+
+class stud_registration:
+    def __init__(self):
+        self.registration_list = AVL_Tree() # prioritization structure of students
+        self.student_dict = {}  # Dictionary to store student information
+        
+    # updates the student_dict when a new student is added to the tree
+    def update_student_dict(self):
+        self.student_dict = {}  # Clear the dictionary
+        
+        self._update_student_dict(self.registration_list.root) # update dictionary based on new student
+
+    # this is different because _update_student is intended for internal use in relation to update_student_dict
+    # it should only be accessed within the classs it exists 
+    def _update_student_dict(self, node):
+        if node:
+            # the set up of:
+            # node.right
+            # self.studnt_dict[node.name]
+            # node.left
+            # ensures that the dictionary will be ordered in a descending manner
+            self._update_student_dict(node.right) 
+
+            # Update the student_dict with the student's information
+            self.student_dict[node.name] = {
+                'major': node.major,
+                'year': node.year,
+                'reg_day': node.reg_day,
+                'priority': node.priority
+            }
+
+            self._update_student_dict(node.left)
+
+    def student_priority(self, major, year, reg_day):
+        level = 0 #reset the level for each function call
+        if year == 0: #for auditors
+            level = level + (.5-(.1*(reg_day))) # level will equal 0.5 for registrations before orientation week, 0.4 for registrations on the first day, etc.
+          
+        elif year <5: # for undergraduate students
+            if major == 'cs' or major == 'math':
+                level = level+10 # adds 10 to the level for cs or math majors,
+            level = level + year # adds 1,2,3, or 4 to the level based on the year.
+            level = level +(.5-(.1*(reg_day))) #+0.5 for students registered before the orientation week, same as for auditors.
+            
+        else:
+            level = 15 #for graduate students, level will automatically be 15.
+        return level
+
+    # adding new student to the AVL tree so long as they registered within the orientation period
+    def register_student(self, name, year, reg_day, major):
+        if int(reg_day) < 6:
+            priority = self.student_priority(major, year, reg_day) # caluclte their priority
+            self.registration_list.root = self.registration_list.insert(self.registration_list.root, name, major, year, reg_day, priority)
+            
+    # we are removing students based on the dictionary list. I am not updating tree because
+    # I am running under the assumption that the class has already started and we already of a waitlist which is captured 
+    # in the dictionary
+    def remove_student(self, name, identifier):
+        self.registration_list.root = self.registration_list.delete_node(self.registration_list.root, identifier)
+
+    
+    def get_student_dataframe(self, max_students = 25):
+        admitted_students = []
+        self.registration_list.print_tree(self.registration_list.root, admitted_students, max_students)
+
+        # getting column for each data frame
+        columns = ['Name', 'Major', 'Year', 'Reg Day', 'Priority']
+
+        # return dataframe 
+        return pd.DataFrame(admitted_students, columns=columns)
+    
+
+if __name__ == "__main__":
+    reg_stud = stud_registration()
+
+    random.seed(101)
+
+    # List of possible majors
+    majors = ['cs', 'math', 'other']
+
+    # Function to generate a random student
+    def generate_random_student():
+        name = f"student{random.randint(1, 100)}" # Random student name
+        year = random.randint(1, 6) # Random year (greater than 0)
+        if year == 0:
+            major = 'none'
+        elif year > 4:
+            major = 'data science'
+        else:
+            major = random.choice(majors) # Random major
+        reg_day = random.randint(0, 10) # Random registration day (greater than or equal to 0)
+
+        return name, year, reg_day, major
+
+
+    # Generate a list of random students
+    num_students = 50 # Change this to the number of students you want
+    random_students = [generate_random_student() for _ in range(num_students)] # under score in for_ in... represents that the loop variable is not needed
+
+
+    # Print the generated students
+    for student in random_students:
+        reg_stud.register_student(student[0], student[1], student[2], student[3])
+    
+    reg_stud.register_student('student0', 6, 6,'ds') # showing that those without 
+    reg_stud.register_student('student0', 6, 0,'ds')
+
+    name_to_identifier = {}
+    x = reg_stud.registration_list.set_identifier(reg_stud.registration_list.root, int(num_students), name_to_identifier)
+    stud = 'student99'
+    if stud in name_to_identifier:
+        identifier = name_to_identifier[stud]
+        reg_stud.remove_student(stud, identifier)
+
+          
+    admitted = reg_stud.get_student_dataframe()
+    print(admitted)
+
+########################################################################################################################################
+
+# class Node deals with the information about the relation and information that each node contains 
+class Node:
+    def __init__(self, name, major, year, reg_day, priority):
+        self.name = name # student's name
+        self.major = major # major of the student
+        self.year = year # the year the student is in
+        self.reg_day = reg_day # day of registration 
+        self.priority = priority # used in comparsion based analysis for developing priority 
+
+        # when inputing a node there is no child attached 
+        self.left = None 
+        self.right = None
+        self.height = 1 # will be used to help determine rebalancing 
+
+# class AVL_Tree contains information about the structure of AVL_Tree and how to maintain it
+# such as the rotation, insertion, and deletion form the tree
+class AVL_Tree:
+    def __init__(self):
+        self.root = None # initially, the tree is empty because we have not put in any new students 
+
+    # determines the tree height of each subtree, helps to determine if the subtree needs to be rotated and in which direction
+    def tree_height(self, node):
+        if node is None:
+            return 0
+        left_height = self.tree_height(node.left) # getting the height of the left subtree
+        right_height = self.tree_height(node.right) # getting the height of the right subtree
+        return max(left_height, right_height) + 1 # return the subtree which has the largest depth (adding 1 since we start our count at 0)
+    
+    def left_left_rotation(self, node):
+        if node is not None and node.right is not None:
+            new_parent = node.right # setting the right child as the pivot/new parent
+            temp_var = new_parent.left # temparary variable that will be reattached when tree has been rotated
+            new_parent.left = node # setting parent node as left child
+            node.right = temp_var # since the node is going to be smaller than the temp var, it is going to be placed as right child
+
+            # since we repositioned the parent node and the right child's position, we need to update the height of each
+            node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1 
+            new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+            # return the new_parent for recalculation to see if the tree is now balanced
+            return new_parent
+        else:
+            return node
+        
+    def right_right_rotation(self, node):
+        if node is not None and node.left is not None:
+            new_parent = node.left # setting the left child as the pivot/new parent
+            temp_var = new_parent.right # temparary variable that will be reattached when tree has been rotated
+            new_parent.right = node # setting parent node as right child
+            node.left = temp_var # since the node is going to be bigger than the temp var, it is going to be placed as left child
+
+            # since we repositioned the parent node and the right child's position, we need to update the height of each
+            node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1
+            new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+            # return the new_parent for recalculation to see if the tree is now balanced
+            return new_parent
+        else:
+            return node
+
+    def left_right_rotation(self, node):
+        node.left = self.left_left_rotation(node.left)
+        return self.right_right_rotation(node)
+
+    def right_left_rotation(self, node):
+        node.right = self.right_right_rotation(node.right)
+        return self.left_left_rotation(node)
+ 
+    # inserting a new student into the AVL tree
+    def insert(self, parent_node, name, major, year, reg_day, priority):
+        # set the student to the root node if it is going to be ther first thing in the list 
+        if parent_node is None:
+            # in here we care using the node class to create the root node
+            return Node(name, major, year, reg_day, priority)  
+
+        # We are inserting the following students based on their priority value
+        # the new student has a lower priority value than the students already in the tree
+        if priority < parent_node.priority:
+            parent_node.left = self.insert(parent_node.left, name, major, year, reg_day, priority)
+            
+        # the new student has a higher priority value than the students already in the tree
+        else:
+            parent_node.right = self.insert(parent_node.right, name, major, year, reg_day, priority)
+
+        # once we add the new node we need to update the height of our tree that will be used to determine 
+        # balance of our new tree
+        parent_node.height = max(self.tree_height(parent_node.left), self.tree_height(parent_node.right)) + 1
+       
+        # if the balance is greater than 1 or smaller than -1 (so 2 or -2) means we are no longer balanced 
+        # thus we need to rotate the nodes to rebalance the tree such that it is between -1>= x =<1
+        balance = self.tree_height(parent_node.left) - self.tree_height(parent_node.right)
+        
+        # there is a string of left child that outweighs how many right child there is in the subtree
+        if balance > 1:
+            if priority < parent_node.left.priority:
+                return self.right_right_rotation(parent_node)
+            else:
+                return self.left_right_rotation(parent_node)
+            
+        # there is a string of right child that outweighs how many left child there is in the subtree
+        if balance < -1:
+            if priority > parent_node.right.priority:
+                return self.left_left_rotation(parent_node)
+            else:
+                return self.right_left_rotation(parent_node)
+
+        return parent_node
+    
+    def delete_node(self, node, identifier):
+        if node is None:
+            return node
+        if identifier < node.identifier:
+            node.left = self.delete_node(node.left, identifier)
+        elif identifier > node.identifier:
+            node.right = self.delete_node(node.right, identifier)
+        else:
+            if node.left is None:
+                return node.right
+            elif node.right is None:
+                return node.left
+            temp = self._find_min(node.right)
+            node.name, node.major, node.year, node.reg_day, node.priority, node.identifier = temp.name, temp.major, temp.year, temp.reg_day, temp.priority, temp.identifier
+            node.right = self.delete_node(node.right, temp.identifier)
+            node.height = 1 + max(self.tree_height(node.left), self.tree_height(node.right))
+        return node
+    
+    def set_identifier(self, node, N, name_to_identifier):
+        if node:
+            N= self.set_identifier(node.right, N, name_to_identifier)
+            node.identifier = N 
+            name_to_identifier[node.name] = N
+            N = N - 1
+            N = self.set_identifier(node.left, N, name_to_identifier)
+        return N
+
+    def print_tree(self, node, admitted):
+        if node:
+            self.print_tree(node.right)
+            print(node.name, node.major, node.year, node.reg_day, node.priority, node.identifier)
+            self.print_tree(node.left)
+
+class stud_registration:
+    def __init__(self):
+        self.registration_list = AVL_Tree() # prioritization structure of students
+        self.student_dict = {}  # Dictionary to store student information
+        
+    # updates the student_dict when a new student is added to the tree
+    def update_student_dict(self):
+        self.student_dict = {}  # Clear the dictionary
+        
+        self._update_student_dict(self.registration_list.root) # update dictionary based on new student
+
+    # this is different because _update_student is intended for internal use in relation to update_student_dict
+    # it should only be accessed within the classs it exists 
+    def _update_student_dict(self, node):
+        if node:
+            # the set up of:
+            # node.right
+            # self.studnt_dict[node.name]
+            # node.left
+            # ensures that the dictionary will be ordered in a descending manner
+            self._update_student_dict(node.right) 
+
+            # Update the student_dict with the student's information
+            self.student_dict[node.name] = {
+                'major': node.major,
+                'year': node.year,
+                'reg_day': node.reg_day,
+                'priority': node.priority
+            }
+
+            self._update_student_dict(node.left)
+
+    def student_priority(self, major, year, reg_day):
+        level = 0 #reset the level for each function call
+        if year == 0: #for auditors
+            level = level + (.5-(.1*(reg_day))) # level will equal 0.5 for registrations before orientation week, 0.4 for registrations on the first day, etc.
+          
+        elif year <5: # for undergraduate students
+            if major == 'cs' or major == 'math':
+                level = level+10 # adds 10 to the level for cs or math majors,
+            level = level + year # adds 1,2,3, or 4 to the level based on the year.
+            level = level +(.5-(.1*(reg_day))) #+0.5 for students registered before the orientation week, same as for auditors.
+            
+        else:
+            level = 15 #for graduate students, level will automatically be 15.
+        return level
+
+    # adding new student to the AVL tree so long as they registered within the orientation period
+    def register_student(self, name, year, reg_day, major):
+        if int(reg_day) < 6:
+            priority = self.student_priority(major, year, reg_day) # caluclte their priority
+            self.registration_list.root = self.registration_list.insert(self.registration_list.root, name, major, year, reg_day, priority)
+            
+    # we are removing students based on the dictionary list. I am not updating tree because
+    # I am running under the assumption that the class has already started and we already of a waitlist which is captured 
+    # in the dictionary
+    def remove_student(self, name, identifier):
+        self.registration_list.root = self.registration_list.delete_node(self.registration_list.root, identifier)
+
+    
+    def get_student_dataframe(self, max_students=25):
+        admitted_students = [] # building dataframe to visually represent students who are admided
+        # count = 0 # only go through the top 25 in dictionary
+        
+        #     # adding student to dictionary
+        #     admitted_students.append([name, student_info['major'], 
+        #                          student_info['year'], 
+        #                          student_info['reg_day'], 
+        #                          student_info['priority']])
+        #     count += 1
+
+            # When there are 25 admitted students, we stop 
+            # if count >= max_students:
+            #     break
+
+        # getting column for each data frame
+        columns = ['Name', 'Major', 'Year', 'Reg Day', 'Priority']
+
+        # return dataframe 
+        return pd.DataFrame(admitted_students, columns=columns)
+    
+
+if __name__ == "__main__":
+    reg_stud = stud_registration()
+
+    random.seed(101)
+
+    # List of possible majors
+    majors = ['cs', 'math', 'other']
+
+    # Function to generate a random student
+    def generate_random_student():
+        name = f"student{random.randint(1, 100)}" # Random student name
+        year = random.randint(1, 6) # Random year (greater than 0)
+        if year == 0:
+            major = 'none'
+        elif year > 4:
+            major = 'data science'
+        else:
+            major = random.choice(majors) # Random major
+        reg_day = random.randint(0, 10) # Random registration day (greater than or equal to 0)
+
+        return name, year, reg_day, major
+
+
+    # Generate a list of random students
+    num_students = 50 # Change this to the number of students you want
+    random_students = [generate_random_student() for _ in range(num_students)] # under score in for_ in... represents that the loop variable is not needed
+
+
+    # Print the generated students
+    for student in random_students:
+        reg_stud.register_student(student[0], student[1], student[2], student[3])
+    
+    name_to_identifier = {}
+    x = reg_stud.registration_list.set_identifier(reg_stud.registration_list.root, int(num_students), name_to_identifier)
+    stud = 'student99'
+    if stud in name_to_identifier:
+        identifier = name_to_identifier[stud]
+        reg_stud.remove_student(stud, identifier)
+
+          
+    admitted = reg_stud.get_student_dataframe(reg_stud.registration_list.root)
+    print(admitted)
+
+  ########################################################################################################################################
+    
+# class Node deals with the information about the relation and information that each node contains 
+class Node:
+    def __init__(self, name, major, year, reg_day, priority):
+        self.name = name # student's name
+        self.major = major # major of the student
+        self.year = year # the year the student is in
+        self.reg_day = reg_day # day of registration 
+        self.priority = priority # used in comparsion based analysis for developing priority 
+
+        # when inputing a node there is no child attached 
+        self.left = None 
+        self.right = None
+        self.height = 1 # will be used to help determine rebalancing 
+
+# class AVL_Tree contains information about the structure of AVL_Tree and how to maintain it
+# such as the rotation, insertion, and deletion form the tree
+class AVL_Tree:
+    def __init__(self):
+        self.root = None # initially, the tree is empty because we have not put in any new students 
+
+    # determines the tree height of each subtree, helps to determine if the subtree needs to be rotated and in which direction
+    def tree_height(self, node):
+        if node is None:
+            return 0
+        left_height = self.tree_height(node.left) # getting the height of the left subtree
+        right_height = self.tree_height(node.right) # getting the height of the right subtree
+        return max(left_height, right_height) + 1 # return the subtree which has the largest depth (adding 1 since we start our count at 0)
+    
+    def left_left_rotation(self, node):
+        if node is not None and node.right is not None:
+            new_parent = node.right # setting the right child as the pivot/new parent
+            temp_var = new_parent.left # temparary variable that will be reattached when tree has been rotated
+            new_parent.left = node # setting parent node as left child
+            node.right = temp_var # since the node is going to be smaller than the temp var, it is going to be placed as right child
+
+            # since we repositioned the parent node and the right child's position, we need to update the height of each
+            node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1 
+            new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+            # return the new_parent for recalculation to see if the tree is now balanced
+            return new_parent
+        else:
+            return node
+        
+    def right_right_rotation(self, node):
+        if node is not None and node.left is not None:
+            new_parent = node.left # setting the left child as the pivot/new parent
+            temp_var = new_parent.right # temparary variable that will be reattached when tree has been rotated
+            new_parent.right = node # setting parent node as right child
+            node.left = temp_var # since the node is going to be bigger than the temp var, it is going to be placed as left child
+
+            # since we repositioned the parent node and the right child's position, we need to update the height of each
+            node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1
+            new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+            # return the new_parent for recalculation to see if the tree is now balanced
+            return new_parent
+        else:
+            return node
+
+    def left_right_rotation(self, node):
+        node.left = self.left_left_rotation(node.left)
+        return self.right_right_rotation(node)
+
+    def right_left_rotation(self, node):
+        node.right = self.right_right_rotation(node.right)
+        return self.left_left_rotation(node)
+ 
+    # inserting a new student into the AVL tree
+    def insert(self, parent_node, name, major, year, reg_day, priority):
+        # set the student to the root node if it is going to be ther first thing in the list 
+        if parent_node is None:
+            # in here we care using the node class to create the root node
+            return Node(name, major, year, reg_day, priority)  
+
+        # We are inserting the following students based on their priority value
+        # the new student has a lower priority value than the students already in the tree
+        if priority < parent_node.priority:
+            parent_node.left = self.insert(parent_node.left, name, major, year, reg_day, priority)
+            
+        # the new student has a higher priority value than the students already in the tree
+        else:
+            parent_node.right = self.insert(parent_node.right, name, major, year, reg_day, priority)
+
+        # once we add the new node we need to update the height of our tree that will be used to determine 
+        # balance of our new tree
+        parent_node.height = max(self.tree_height(parent_node.left), self.tree_height(parent_node.right)) + 1
+       
+        # if the balance is greater than 1 or smaller than -1 (so 2 or -2) means we are no longer balanced 
+        # thus we need to rotate the nodes to rebalance the tree such that it is between -1>= x =<1
+        balance = self.tree_height(parent_node.left) - self.tree_height(parent_node.right)
+        
+        # there is a string of left child that outweighs how many right child there is in the subtree
+        if balance > 1:
+            if priority < parent_node.left.priority:
+                return self.right_right_rotation(parent_node)
+            else:
+                return self.left_right_rotation(parent_node)
+            
+        # there is a string of right child that outweighs how many left child there is in the subtree
+        if balance < -1:
+            if priority > parent_node.right.priority:
+                return self.left_left_rotation(parent_node)
+            else:
+                return self.right_left_rotation(parent_node)
+
+        return parent_node
+    
+    def order_tree(self, node, waitlist):
+        if node:
+            waitlist = self.order_tree(node.right, waitlist)
+            waitlist.append([node.name, node.major, node.year, node.reg_day, node.priority])
+            waitlist = self.order_tree(node.left,waitlist)
+        return waitlist
+
+
+class stud_registration:
+    def __init__(self):
+        self.registration_list = AVL_Tree() # prioritization structure of students
+        self.student_dict = {}  # Dictionary to store student information
+        
+    # updates the student_dict when a new student is added to the tree
+    def update_student_dict(self):
+        self.student_dict = {}  # Clear the dictionary
+        self._update_student_dict(self.registration_list.root) # update dictionary based on new student
+
+    # this is different because _update_student is intended for internal use in relation to update_student_dict
+    # it should only be accessed within the classs it exists 
+    def _update_student_dict(self, node):
+        if node:
+            # the set up of:
+            # node.right
+            # self.studnt_dict[node.name]
+            # node.left
+            # ensures that the dictionary will be ordered in a descending manner
+            self._update_student_dict(node.right) 
+
+            # Update the student_dict with the student's information
+            self.student_dict[node.name] = {
+                'major': node.major,
+                'year': node.year,
+                'reg_day': node.reg_day,
+                'priority': node.priority
+            }
+
+            self._update_student_dict(node.left)
+
+    def student_priority(self, major, year, reg_day):
+        level = 0 #reset the level for each function call
+        if year == 0: #for auditors
+            level = level + (.5-(.1*(reg_day))) # level will equal 0.5 for registrations before orientation week, 0.4 for registrations on the first day, etc.
+          
+        elif year <5: # for undergraduate students
+            if major == 'cs' or major == 'math':
+                level = level+10 # adds 10 to the level for cs or math majors,
+            level = level + year # adds 1,2,3, or 4 to the level based on the year.
+            level = level +(.5-(.1*(reg_day))) #+0.5 for students registered before the orientation week, same as for auditors.
+            
+        else:
+            level = 15 #for graduate students, level will automatically be 15.
+        return level
+
+    # adding new student to the AVL tree so long as they registered within the orientation period
+    def register_student(self, name, year, reg_day, major):
+        if int(reg_day) < 6:
+            priority = self.student_priority(major, year, reg_day) # caluclte their priority
+            self.registration_list.root = self.registration_list.insert(self.registration_list.root, name, major, year, reg_day, priority)
+            
+            self.update_student_dict()  # Update the student_dict
+       
+    # we are removing students based on the dictionary list. I am not updating tree because
+    # I am running under the assumption that the class has already started and we already of a waitlist which is captured 
+    # in the dictionary
+    def remove_student(self, name):
+        if name in self.student_dict:
+            del self.student_dict[name] # delete item when key matches name
+
+    # # returns the dictionary of students
+    # def get_student_dict(self):
+    #     return self.student_dict
+    
+    def get_student_dataframe(self, max_students=25):
+        admitted_students = [] # building dataframe to visually represent students who are admided
+        count = 0 # only go through the top 25 in dictionary
+        for name, student_info in self.student_dict.items():
+            # adding student to dictionary
+            admitted_students.append([name, student_info['major'], 
+                                 student_info['year'], 
+                                 student_info['reg_day'], 
+                                 student_info['priority']])
+            count += 1
+
+            # When there are 25 admitted students, we stop 
+            if count >= max_students:
+                break
+
+        # getting column for each data frame
+        columns = ['Name', 'Major', 'Year', 'Reg Day', 'Priority']
+
+        # return dataframe 
+        return pd.DataFrame(admitted_students, columns=columns)
+
+
+
+if __name__ == "__main__":
+    reg_stud = stud_registration()
+
+    random.seed(101)
+
+    # List of possible majors
+    majors = ['cs', 'math', 'other']
+
+    # Function to generate a random student
+    def generate_random_student():
+        name = f"student{random.randint(1, 100)}" # Random student name
+        year = random.randint(1, 6) # Random year (greater than 0)
+        if year == 0:
+            major = 'none'
+        elif year > 4:
+            major = 'data science'
+        else:
+            major = random.choice(majors) # Random major
+        reg_day = random.randint(0, 10) # Random registration day (greater than or equal to 0)
+
+        return name, year, reg_day, major
+
+
+    # Generate a list of random students
+    num_students = 5 # Change this to the number of students you want
+    random_students = [generate_random_student() for _ in range(num_students)] # under score in for_ in... represents that the loop variable is not needed
+
+
+    # Print the generated students
+    for student in random_students:
+        reg_stud.register_student(student[0], student[1], student[2], student[3])
+
+    new_waitlist = {}
+    for student_name, student_info in waitlist:
+        new_waitlist[student_name] = (student_info['major'], student_info['year'], student_info['reg_day'], student_info['priority'])
+    print(new_waitlist)
+
+
+########################################################################################################################################
+
+
+# class Node deals with the information about the relation and information that each node contains 
+class Node:
+    def __init__(self, name, major, year, reg_day, priority):
+        self.name = name # student's name
+        self.major = major # major of the student
+        self.year = year # the year the student is in
+        self.reg_day = reg_day # day of registration 
+        self.priority = priority # used in comparsion based analysis for developing priority 
+
+        # when inputing a node there is no child attached 
+        self.left = None 
+        self.right = None
+        self.height = 1 # will be used to help determine rebalancing 
+
+# class AVL_Tree contains information about the structure of AVL_Tree and how to maintain it
+# such as the rotation, insertion, and deletion form the tree
+class AVL_Tree:
+    def __init__(self):
+        self.root = None # initially, the tree is empty because we have not put in any new students 
+
+    # determines the tree height of each subtree, helps to determine if the subtree needs to be rotated and in which direction
+    def tree_height(self, node):
+        if node is None:
+            return 0
+        left_height = self.tree_height(node.left) # getting the height of the left subtree
+        right_height = self.tree_height(node.right) # getting the height of the right subtree
+        return max(left_height, right_height) + 1 # return the subtree which has the largest depth (adding 1 since we start our count at 0)
+    
+    def left_left_rotation(self, node):
+        if node is not None and node.right is not None:
+            new_parent = node.right # setting the right child as the pivot/new parent
+            temp_var = new_parent.left # temparary variable that will be reattached when tree has been rotated
+            new_parent.left = node # setting parent node as left child
+            node.right = temp_var # since the node is going to be smaller than the temp var, it is going to be placed as right child
+
+            # since we repositioned the parent node and the right child's position, we need to update the height of each
+            node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1 
+            new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+            # return the new_parent for recalculation to see if the tree is now balanced
+            return new_parent
+        else:
+            return node
+        
+    def right_right_rotation(self, node):
+        if node is not None and node.left is not None:
+            new_parent = node.left # setting the left child as the pivot/new parent
+            temp_var = new_parent.right # temparary variable that will be reattached when tree has been rotated
+            new_parent.right = node # setting parent node as right child
+            node.left = temp_var # since the node is going to be bigger than the temp var, it is going to be placed as left child
+
+            # since we repositioned the parent node and the right child's position, we need to update the height of each
+            node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1
+            new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+            # return the new_parent for recalculation to see if the tree is now balanced
+            return new_parent
+        else:
+            return node
+
+    def left_right_rotation(self, node):
+        node.left = self.left_left_rotation(node.left)
+        return self.right_right_rotation(node)
+
+    def right_left_rotation(self, node):
+        node.right = self.right_right_rotation(node.right)
+        return self.left_left_rotation(node)
+ 
+    # inserting a new student into the AVL tree
+    def insert(self, parent_node, name, major, year, reg_day, priority):
+        # set the student to the root node if it is going to be ther first thing in the list 
+        if parent_node is None:
+            # in here we care using the node class to create the root node
+            return Node(name, major, year, reg_day, priority)  
+
+        # We are inserting the following students based on their priority value
+        # the new student has a lower priority value than the students already in the tree
+        if priority < parent_node.priority:
+            parent_node.left = self.insert(parent_node.left, name, major, year, reg_day, priority)
+            
+        # the new student has a higher priority value than the students already in the tree
+        else:
+            parent_node.right = self.insert(parent_node.right, name, major, year, reg_day, priority)
+
+        # once we add the new node we need to update the height of our tree that will be used to determine 
+        # balance of our new tree
+        parent_node.height = max(self.tree_height(parent_node.left), self.tree_height(parent_node.right)) + 1
+       
+        # if the balance is greater than 1 or smaller than -1 (so 2 or -2) means we are no longer balanced 
+        # thus we need to rotate the nodes to rebalance the tree such that it is between -1>= x =<1
+        balance = self.tree_height(parent_node.left) - self.tree_height(parent_node.right)
+        
+        # there is a string of left child that outweighs how many right child there is in the subtree
+        if balance > 1:
+            if priority < parent_node.left.priority:
+                return self.right_right_rotation(parent_node)
+            else:
+                return self.left_right_rotation(parent_node)
+            
+        # there is a string of right child that outweighs how many left child there is in the subtree
+        if balance < -1:
+            if priority > parent_node.right.priority:
+                return self.left_left_rotation(parent_node)
+            else:
+                return self.right_left_rotation(parent_node)
+
+        return parent_node
+    
+    def order_tree(self, node, waitlist):
+        if node:
+            waitlist = self.order_tree(node.right, waitlist)
+            waitlist.append([node.name, node.major, node.year, node.reg_day, node.priority])
+            waitlist = self.order_tree(node.left,waitlist)
+        return waitlist
+
+
+
+class stud_registration:
+    def __init__(self):
+        self.registration_list = AVL_Tree() # prioritization structure of students
+        self.student_dict = {}  # Dictionary to store student information
+        
+    # updates the student_dict when a new student is added to the tree
+    def update_student_dict(self):
+        self.student_dict = {}  # Clear the dictionary
+        self._update_student_dict(self.registration_list.root) # update dictionary based on new student
+
+    # this is different because _update_student is intended for internal use in relation to update_student_dict
+    # it should only be accessed within the classs it exists 
+    def _update_student_dict(self, node):
+        if node:
+            # the set up of:
+            # node.right
+            # self.studnt_dict[node.name]
+            # node.left
+            # ensures that the dictionary will be ordered in a descending manner
+            self._update_student_dict(node.right) 
+
+            # Update the student_dict with the student's information
+            self.student_dict[node.name] = {
+                'major': node.major,
+                'year': node.year,
+                'reg_day': node.reg_day,
+                'priority': node.priority
+            }
+
+            self._update_student_dict(node.left)
+
+    def student_priority(self, major, year, reg_day):
+        level = 0 #reset the level for each function call
+        if year == 0: #for auditors
+            level = level + (.5-(.1*(reg_day))) # level will equal 0.5 for registrations before orientation week, 0.4 for registrations on the first day, etc.
+          
+        elif year <5: # for undergraduate students
+            if major == 'cs' or major == 'math':
+                level = level+10 # adds 10 to the level for cs or math majors,
+            level = level + year # adds 1,2,3, or 4 to the level based on the year.
+            level = level +(.5-(.1*(reg_day))) #+0.5 for students registered before the orientation week, same as for auditors.
+            
+        else:
+            level = 15 #for graduate students, level will automatically be 15.
+        return level
+
+    # adding new student to the AVL tree so long as they registered within the orientation period
+    def register_student(self, name, year, reg_day, major):
+        if int(reg_day) < 6:
+            priority = self.student_priority(major, year, reg_day) # caluclte their priority
+            self.registration_list.root = self.registration_list.insert(self.registration_list.root, name, major, year, reg_day, priority)
+            
+            self.update_student_dict()  # Update the student_dict
+       
+    # we are removing students based on the dictionary list. I am not updating tree because
+    # I am running under the assumption that the class has already started and we already of a waitlist which is captured 
+    # in the dictionary
+    def remove_student(self, name):
+        if name in self.student_dict:
+            del self.student_dict[name] # delete item when key matches name
+
+    # # returns the dictionary of students
+    # def get_student_dict(self):
+    #     return self.student_dict
+    
+    def get_student_dataframe(self, max_students=25):
+        admitted_students = [] # building dataframe to visually represent students who are admided
+        count = 0 # only go through the top 25 in dictionary
+        for name, student_info in self.student_dict.items():
+            # adding student to dictionary
+            admitted_students.append([name, student_info['major'], 
+                                 student_info['year'], 
+                                 student_info['reg_day'], 
+                                 student_info['priority']])
+            count += 1
+
+            # When there are 25 admitted students, we stop 
+            if count >= max_students:
+                break
+
+        # getting column for each data frame
+        columns = ['Name', 'Major', 'Year', 'Reg Day', 'Priority']
+
+        # return dataframe 
+        return pd.DataFrame(admitted_students, columns=columns)
+
+
+
+if __name__ == "__main__":
+    reg_stud = stud_registration()
+
+
+    random.seed(101)
+
+
+    # List of possible majors
+    majors = ['cs', 'math', 'other']
+
+    # Function to generate a random student
+    def generate_random_student():
+        name = f"student{random.randint(1, 100)}" # Random student name
+        year = random.randint(1, 6) # Random year (greater than 0)
+        if year == 0:
+            major = 'none'
+        elif year > 4:
+            major = 'data science'
+        else:
+            major = random.choice(majors) # Random major
+        reg_day = random.randint(0, 10) # Random registration day (greater than or equal to 0)
+
+        return name, year, reg_day, major
+
+
+    # Generate a list of random students
+    num_students = 50 # Change this to the number of students you want
+    random_students = [generate_random_student() for _ in range(num_students)] # under score in for_ in... represents that the loop variable is not needed
+
+
+    # Print the generated students
+    for student in random_students:
+        reg_stud.register_student(student[0], student[1], student[2], student[3])
+        
+    # reg_stud.registration_list.print_tree(reg_stud.registration_list.root)
+    # print(reg_stud.get_student_dict())
+    # # reg_stud.remove_student('7')
+    # admitted = reg_stud.get_student_dict()
+    # print(admitted)
+
+    waitlist = reg_stud.registration_list.order_tree(reg_stud.registration_list.root, [])
+    print(waitlist)
+
+
+########################################################################################################################################
+
+# class Node deals with the information about the relation and information that each node contains 
+class Node:
+    def __init__(self, name, major, year, reg_day, priority):
+        self.name = name # student's name
+        self.major = major # major of the student
+        self.year = year # the year the student is in
+        self.reg_day = reg_day # day of registration 
+        self.priority = priority # used in comparsion based analysis for developing priority 
+
+        # when inputing a node there is no child attached 
+        self.left = None 
+        self.right = None
+        self.height = 1 # will be used to help determine rebalancing 
+
+# class AVL_Tree contains information about the structure of AVL_Tree and how to maintain it
+# such as the rotation, insertion, and deletion form the tree
+class AVL_Tree:
+    def __init__(self):
+        self.root = None # initially, the tree is empty because we have not put in any new students 
+
+    # determines the tree height of each subtree, helps to determine if the subtree needs to be rotated and in which direction
+    def tree_height(self, node):
+        if node is None:
+            return 0
+        left_height = self.tree_height(node.left) # getting the height of the left subtree
+        right_height = self.tree_height(node.right) # getting the height of the right subtree
+        return max(left_height, right_height) + 1 # return the subtree which has the largest depth (adding 1 since we start our count at 0)
+    
+    def left_left_rotation(self, node):
+        new_parent = node.right # setting the right child as the pivot/new parent
+        temp_var = new_parent.left # temparary variable that will be reattached when tree has been rotated
+        new_parent.left = node # setting parent node as left child
+        node.right = temp_var # since the node is going to be smaller than the temp var, it is going to be placed as right child
+
+        # since we repositioned the parent node and the right child's position, we need to update the height of each
+        node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1 
+        new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+        # return the new_parent for recalculation to see if the tree is now balanced
+        return new_parent
+    
+    def right_right_rotation(self, node):
+        new_parent = node.left # setting the left child as the pivot/new parent
+        temp_var = new_parent.right # temparary variable that will be reattached when tree has been rotated
+        new_parent.right = node # setting parent node as right child
+        node.left = temp_var # since the node is going to be bigger than the temp var, it is going to be placed as left child
+
+        # since we repositioned the parent node and the right child's position, we need to update the height of each
+        node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1
+        new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+        # return the new_parent for recalculation to see if the tree is now balanced
+        return new_parent
+
+    def left_right_rotation(self, node):
+        node.left = self.left_left_rotation(node.left)
+        return self.right_right_rotation(node)
+
+    def right_left_rotation(self, node):
+        node.right = self.right_right_rotation(node.right)
+        return self.left_left_rotation(node)
+ 
+    # inserting a new student into the AVL tree
+    def insert(self, parent_node, name, major, year, reg_day, priority):
+        # set the student to the root node if it is going to be ther first thing in the list 
+        if parent_node is None:
+            # in here we care using the node class to create the root node
+            return Node(name, major, year, reg_day, priority)  
+
+        # We are inserting the following students based on their priority value
+        # the new student has a lower priority value than the students already in the tree
+        if priority < parent_node.priority:
+            parent_node.left = self.insert(parent_node.left, name, major, year, reg_day, priority)
+            
+        # the new student has a higher priority value than the students already in the tree
+        else:
+            parent_node.right = self.insert(parent_node.right, name, major, year, reg_day, priority)
+
+        # once we add the new node we need to update the height of our tree that will be used to determine 
+        # balance of our new tree
+        parent_node.height = max(self.tree_height(parent_node.left), self.tree_height(parent_node.right)) + 1
+       
+        # if the balance is greater than 1 or smaller than -1 (so 2 or -2) means we are no longer balanced 
+        # thus we need to rotate the nodes to rebalance the tree such that it is between -1>= x =<1
+        balance = self.tree_height(parent_node.left) - self.tree_height(parent_node.right)
+        
+        # there is a string of left child that outweighs how many right child there is in the subtree
+        if balance > 1:
+            if priority < parent_node.left.priority:
+                return self.right_right_rotation(parent_node)
+            else:
+                return self.left_right_rotation(parent_node)
+            
+        # there is a string of right child that outweighs how many left child there is in the subtree
+        if balance < -1:
+            if priority > parent_node.right.priority:
+                return self.left_left_rotation(parent_node)
+            else:
+                return self.right_left_rotation(parent_node)
+
+        return parent_node
+    
+
+
+
+class stud_registration:
+    def __init__(self):
+        self.registration_list = AVL_Tree() # prioritization structure of students
+        self.student_dict = {}  # Dictionary to store student information
+        
+    # updates the student_dict when a new student is added to the tree
+    def update_student_dict(self):
+        self.student_dict = {}  # Clear the dictionary
+        self._update_student_dict(self.registration_list.root) # update dictionary based on new student
+
+    # this is different because _update_student is intended for internal use in relation to update_student_dict
+    # it should only be accessed within the classs it exists 
+    def _update_student_dict(self, node):
+        if node:
+            # the set up of:
+            # node.right
+            # self.studnt_dict[node.name]
+            # node.left
+            # ensures that the dictionary will be ordered in a descending manner
+            self._update_student_dict(node.right) 
+
+            # Update the student_dict with the student's information
+            self.student_dict[node.name] = {
+                'major': node.major,
+                'year': node.year,
+                'reg_day': node.reg_day,
+                'priority': node.priority
+            }
+
+            self._update_student_dict(node.left)
+
+    def student_priority(self, major, year, reg_day):
+        level = 0 #reset the level for each function call
+        if year == 0: #for auditors
+            level = level + (.5-(.1*(reg_day))) # level will equal 0.5 for registrations before orientation week, 0.4 for registrations on the first day, etc.
+          
+        elif year <5: # for undergraduate students
+            if major == 'cs' or major == 'math':
+                level = level+10 # adds 10 to the level for cs or math majors,
+            level = level + year # adds 1,2,3, or 4 to the level based on the year.
+            level = level +(.5-(.1*(reg_day))) #+0.5 for students registered before the orientation week, same as for auditors.
+            
+        else:
+            level = 15 #for graduate students, level will automatically be 15.
+        return level
+
+    # adding new student to the AVL tree so long as they registered within the orientation period
+    def register_student(self, name, year, reg_day, major):
+        if int(reg_day) < 6:
+            priority = self.student_priority(major, year, reg_day) # caluclte their priority
+            self.registration_list.root = self.registration_list.insert(self.registration_list.root, name, major, year, reg_day, priority)
+            self.update_student_dict()  # Update the student_dict
+       
+    # we are removing students based on the dictionary list. I am not updating tree because
+    # I am running under the assumption that the class has already started and we already of a waitlist which is captured 
+    # in the dictionary
+    def remove_student(self, name):
+        if name in self.student_dict:
+            del self.student_dict[name] # delete item when key matches name
+
+    # # returns the dictionary of students
+    # def get_student_dict(self):
+    #     return self.student_dict
+    
+    def get_student_dataframe(self, max_students=25):
+        admitted_students = [] # building dataframe to visually represent students who are admided
+        count = 0 # only go through the top 25 in dictionary
+        for name, student_info in self.student_dict.items():
+            # adding student to dictionary
+            admitted_students.append([name, student_info['major'], 
+                                 student_info['year'], 
+                                 student_info['reg_day'], 
+                                 student_info['priority']])
+            count += 1
+
+            # When there are 25 admitted students, we stop 
+            if count >= max_students:
+                break
+
+        # getting column for each data frame
+        columns = ['Name', 'Major', 'Year', 'Reg Day', 'Priority']
+
+        # return dataframe 
+        return pd.DataFrame(admitted_students, columns=columns)
+
+
+
+if __name__ == "__main__":
+    reg_stud = stud_registration()
+
+
+    random.seed(101)
+
+
+    # List of possible majors
+    majors = ['cs', 'math', 'other']
+
+    # Function to generate a random student
+    def generate_random_student():
+        name = f"student{random.randint(1, 100)}" # Random student name
+        year = random.randint(1, 6) # Random year (greater than 0)
+        if year == 0:
+            major = 'none'
+        elif year > 4:
+            major = 'data science'
+        else:
+            major = random.choice(majors) # Random major
+        reg_day = random.randint(0, 10) # Random registration day (greater than or equal to 0)
+
+        return name, year, reg_day, major
+
+
+    # Generate a list of random students
+    num_students = 50 # Change this to the number of students you want
+    random_students = [generate_random_student() for _ in range(num_students)] # under score in for_ in... represents that the loop variable is not needed
+
+
+    # Print the generated students
+    for student in random_students:
+        reg_stud.register_student(student[0], student[1], student[2], student[3])
+        
+    # reg_stud.registration_list.print_tree(reg_stud.registration_list.root)
+    print(reg_stud.get_student_dict())
+    # # reg_stud.remove_student('7')
+    # admitted = reg_stud.get_student_dict()
+    # print(admitted)
+
+#############################################################################################################################
+
 import numpy as np
 import matplotlib as plt
 import pandas as pd
 
+# class Node deals with the information about the relation and information that each node contains 
+class Node:
+    def __init__(self, name, major, year, reg_day, priority):
+        self.name = name # student's name
+        self.major = major # major of the student
+        self.year = year # the year the student is in
+        self.reg_day = reg_day # day of registration 
+        self.priority = priority # used in comparsion based analysis for developing priority 
+
+        # when inputing a node there is no child attached 
+        self.left = None 
+        self.right = None
+        self.height = 1 # will be used to help determine rebalancing 
+
+# class AVL_Tree contains information about the structure of AVL_Tree and how to maintain it
+# such as the rotation, insertion, and deletion form the tree
+class AVL_Tree:
+    def __init__(self):
+        self.root = None # initially, the tree is empty because we have not put in any new students 
+
+    # determines the tree height of each subtree, helps to determine if the subtree needs to be rotated and in which direction
+    def tree_height(self, node):
+        if node is None:
+            return 0
+        left_height = self.tree_height(node.left) # getting the height of the left subtree
+        right_height = self.tree_height(node.right) # getting the height of the right subtree
+        return max(left_height, right_height) + 1 # return the subtree which has the largest depth (adding 1 since we start our count at 0)
+    
+    def left_left_rotation(self, node):
+        new_parent = node.right # setting the right child as the pivot/new parent
+        temp_var = new_parent.left # temparary variable that will be reattached when tree has been rotated
+        new_parent.left = node # setting parent node as left child
+        node.right = temp_var # since the node is going to be smaller than the temp var, it is going to be placed as right child
+
+        # since we repositioned the parent node and the right child's position, we need to update the height of each
+        node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1 
+        new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+        # return the new_parent for recalculation to see if the tree is now balanced
+        return new_parent
+    
+    def right_right_rotation(self, node):
+        new_parent = node.left # setting the left child as the pivot/new parent
+        temp_var = new_parent.right # temparary variable that will be reattached when tree has been rotated
+        new_parent.right = node # setting parent node as right child
+        node.left = temp_var # since the node is going to be bigger than the temp var, it is going to be placed as left child
+
+        # since we repositioned the parent node and the right child's position, we need to update the height of each
+        node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1
+        new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+        # return the new_parent for recalculation to see if the tree is now balanced
+        return new_parent
+
+    def left_right_rotation(self, node):
+        node.left = self.left_left_rotation(node.left)
+        return self.right_right_rotation(node)
+
+    def right_left_rotation(self, node):
+        node.right = self.right_right_rotation(node.right)
+        return self.left_left_rotation(node)
+ 
+    # inserting a new student into the AVL tree
+    def insert(self, parent_node, name, major, year, reg_day, priority):
+        # set the student to the root node if it is going to be ther first thing in the list 
+        if parent_node is None:
+            # in here we care using the node class to create the root node
+            return Node(name, major, year, reg_day, priority)  
+
+        # We are inserting the following students based on their priority value
+        # the new student has a lower priority value than the students already in the tree
+        if priority < parent_node.priority:
+            parent_node.left = self.insert(parent_node.left, name, major, year, reg_day, priority)
+            
+        # the new student has a higher priority value than the students already in the tree
+        else:
+            parent_node.right = self.insert(parent_node.right, name, major, year, reg_day, priority)
+
+        # once we add the new node we need to update the height of our tree that will be used to determine 
+        # balance of our new tree
+        parent_node.height = max(self.tree_height(parent_node.left), self.tree_height(parent_node.right)) + 1
+       
+        # if the balance is greater than 1 or smaller than -1 (so 2 or -2) means we are no longer balanced 
+        # thus we need to rotate the nodes to rebalance the tree such that it is between -1>= x =<1
+        balance = self.tree_height(parent_node.left) - self.tree_height(parent_node.right)
+        
+        # there is a string of left child that outweighs how many right child there is in the subtree
+        if balance > 1:
+            if priority < parent_node.left.priority:
+                return self.right_right_rotation(parent_node)
+            else:
+                return self.left_right_rotation(parent_node)
+            
+        # there is a string of right child that outweighs how many left child there is in the subtree
+        if balance < -1:
+            if priority > parent_node.right.priority:
+                return self.left_left_rotation(parent_node)
+            else:
+                return self.right_left_rotation(parent_node)
+
+        return parent_node
+
+
+class stud_registration:
+    def __init__(self):
+        self.registraion_list = AVL_Tree() # prioritization structure of students
+        self.student_dict = {}  # Dictionary to store student information
+
+    # updates the student_dict when a new student is added to the tree
+    def update_student_dict(self):
+        self.student_dict = {}  # Clear the dictionary
+        self._update_student_dict(self.registraion_list.root) # update dictionary based on new student
+
+    # this is different because _update_student is intended for internal use in relation to update_student_dict
+    # it should only be accessed within the classs it exists 
+    def _update_student_dict(self, node):
+        if node:
+            # the set up of:
+            # node.right
+            # self.studnt_dict[node.name]
+            # node.left
+            # ensures that the dictionary will be ordered in a descending manner
+            self._update_student_dict(node.right) 
+
+            # Update the student_dict with the student's information
+            self.student_dict[node.name] = {
+                'major': node.major,
+                'year': node.year,
+                'reg_day': node.reg_day,
+                'priority': node.priority
+            }
+
+            self._update_student_dict(node.left)
+
+    def student_priority(self, major, year, reg_day):
+        level = 0 #reset the level for each function call
+        if year == 0: #for auditors
+            level = level + (.5-(.1*(reg_day))) # level will equal 0.5 for registrations before orientation week, 0.4 for registrations on the first day, etc.
+          
+        elif year <5: # for undergraduate students
+            if major == 'cs' or major == 'math':
+                level = level+10 # adds 10 to the level for cs or math majors,
+            level = level + year # adds 1,2,3, or 4 to the level based on the year.
+            level = level +(.5-(.1*(reg_day))) #+0.5 for students registered before the orientation week, same as for auditors.
+            
+        else:
+            level = 15 #for graduate students, level will automatically be 15.
+        return level
+
+    # adding new student to the AVL tree so long as they registered within the orientation period
+    def register_student(self, name, major, year, reg_day):
+        if int(reg_day) < 6:
+            priority = self.student_priority(major, year, reg_day) # caluclte their priority
+            self.registraion_list.root = self.registraion_list.insert(self.registraion_list.root, name, major, year, reg_day, priority)
+            self.update_student_dict()  # Update the student_dict
+
+    # we are removing students based on the dictionary list. I am not updating tree because
+    # I am running under the assumption that the class has already started and we already of a waitlist which is captured 
+    # in the dictionary
+    def remove_student(self, name):
+        if name in self.student_dict:
+            del self.student_dict[name] # delete item when key matches name
+
+    # # returns the dictionary of students
+    # def get_student_dict(self):
+    #     return self.student_dict
+    
+    def get_student_dataframe(self, max_students=25):
+        admitted_students = [] # building dataframe to visually represent students who are admided
+        count = 0 # only go through the top 25 in dictionary
+        for name, student_info in self.student_dict.items():
+            # adding student to dictionary
+            admitted_students.append([name, student_info['major'], 
+                                 student_info['year'], 
+                                 student_info['reg_day'], 
+                                 student_info['priority']])
+            count += 1
+
+            # When there are 25 admitted students, we stop 
+            if count >= max_students:
+                break
+
+        # getting column for each data frame
+        columns = ['Name', 'Major', 'Year', 'Reg Day', 'Priority']
+
+        # return dataframe 
+        return pd.DataFrame(admitted_students, columns=columns)
+
+
+
+if __name__ == "__main__":
+    reg_stud = stud_registration()
+
+    # Insert students
+    reg_stud.register_student('Alice', 'cs', 3, 3)
+    reg_stud.register_student('Bob', 'math', 2, 4)
+    reg_stud.register_student('Charlie', 'art', 2, 1)
+    reg_stud.register_student('David', 'cs', 3, 2)
+    reg_stud.register_student('Eve', 'art',  5, 1)
+    reg_stud.register_student('Frank', 'cs',  0, 1)
+
+    reg_stud.remove_student('Eve')
+
+    students = reg_stud.get_student_dataframe()
+    print(students)
+   
+##################################################################################################
+
+# class Node deals with the information about the relation and information that each node contains 
+class Node:
+    def __init__(self, name, major, year, reg_day, priority):
+        self.name = name # student's name
+        self.major = major # major of the student
+        self.year = year # the year the student is in
+        self.reg_day = reg_day # day of registration 
+        self.priority = priority # used in comparsion based analysis for developing priority 
+
+        # when inputing a node there is no child attached 
+        self.left = None 
+        self.right = None
+        self.height = 1 # will be used to help determine rebalancing 
+
+# class AVL_Tree contains information about the structure of AVL_Tree and how to maintain it
+# such as the rotation, insertion, and deletion form the tree
+class AVL_Tree:
+    def __init__(self):
+        self.root = None # initially, the tree is empty because we have not put in any new students 
+
+    # determines the tree height of each subtree, helps to determine if the subtree needs to be rotated and in which direction
+    def tree_height(self, node):
+        if node is None:
+            return 0
+        left_height = self.tree_height(node.left) # getting the height of the left subtree
+        right_height = self.tree_height(node.right) # getting the height of the right subtree
+        return max(left_height, right_height) + 1 # return the subtree which has the largest depth (adding 1 since we start our count at 0)
+    
+    def left_left_rotation(self, node):
+        new_parent = node.right # setting the right child as the pivot/new parent
+        temp_var = new_parent.left # temparary variable that will be reattached when tree has been rotated
+        new_parent.left = node # setting parent node as left child
+        node.right = temp_var # since the node is going to be smaller than the temp var, it is going to be placed as right child
+
+        # since we repositioned the parent node and the right child's position, we need to update the height of each
+        node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1 
+        new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+        # return the new_parent for recalculation to see if the tree is now balanced
+        return new_parent
+    
+    def right_right_rotation(self, node):
+        new_parent = node.left # setting the left child as the pivot/new parent
+        temp_var = new_parent.right # temparary variable that will be reattached when tree has been rotated
+        new_parent.right = node # setting parent node as right child
+        node.left = temp_var # since the node is going to be bigger than the temp var, it is going to be placed as left child
+
+        # since we repositioned the parent node and the right child's position, we need to update the height of each
+        node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1
+        new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+        # return the new_parent for recalculation to see if the tree is now balanced
+        return new_parent
+
+    def left_right_rotation(self, node):
+        node.left = self.left_left_rotation(node.left)
+        return self.right_right_rotation(node)
+
+    def right_left_rotation(self, node):
+        node.right = self.right_right_rotation(node.right)
+        return self.left_left_rotation(node)
+ 
+    # inserting a new student into the AVL tree
+    def insert(self, parent_node, name, major, year, reg_day, priority):
+        # set the student to the root node if it is going to be ther first thing in the list 
+        if parent_node is None:
+            # in here we care using the node class to create the root node
+            return Node(name, major, year, reg_day, priority)  
+
+        # We are inserting the following students based on their priority value
+        # the new student has a lower priority value than the students already in the tree
+        if priority < parent_node.priority:
+            parent_node.left = self.insert(parent_node.left, name, major, year, reg_day, priority)
+            
+        # the new student has a higher priority value than the students already in the tree
+        else:
+            parent_node.right = self.insert(parent_node.right, name, major, year, reg_day, priority)
+
+        # once we add the new node we need to update the height of our tree that will be used to determine 
+        # balance of our new tree
+        parent_node.height = max(self.tree_height(parent_node.left), self.tree_height(parent_node.right)) + 1
+       
+        # if the balance is greater than 1 or smaller than -1 (so 2 or -2) means we are no longer balanced 
+        # thus we need to rotate the nodes to rebalance the tree such that it is between -1>= x =<1
+        balance = self.tree_height(parent_node.left) - self.tree_height(parent_node.right)
+        
+        # there is a string of left child that outweighs how many right child there is in the subtree
+        if balance > 1:
+            if priority < parent_node.left.priority:
+                return self.right_right_rotation(parent_node)
+            else:
+                return self.left_right_rotation(parent_node)
+            
+        # there is a string of right child that outweighs how many left child there is in the subtree
+        if balance < -1:
+            if priority > parent_node.right.priority:
+                return self.left_left_rotation(parent_node)
+            else:
+                return self.right_left_rotation(parent_node)
+
+        return parent_node
+        
+    def print_tree(self, node):
+        if node:
+            self.print_tree(node.right)
+            print(node.name, node.major, node.year, node.reg_day, node.priority)
+            self.print_tree(node.left)
+
+class stud_registration:
+    def __init__(self):
+        self.registraion_list = AVL_Tree()
+        self.student_dict = {}  # Dictionary to store student information
+
+    def update_student_dict(self):
+        self.student_dict = {}  # Clear the dictionary
+        self._update_student_dict(self.registraion_list.root)
+
+    def _update_student_dict(self, node):
+        if node:
+            self._update_student_dict(node.right)
+
+            # Update the student_dict with the student's information
+            self.student_dict[node.name] = {
+                'major': node.major,
+                'year': node.year,
+                'reg_day': node.reg_day,
+                'priority': node.priority
+            }
+
+            self._update_student_dict(node.left)
+
+    def student_priority(self, major, year, reg_day):
+        level = 0 #reset the level for each function call
+        if year == 0: #for auditors
+            level = level + (.5-(.1*(reg_day))) # level will equal 0.5 for registrations before orientation week, 0.4 for registrations on the first day, etc.
+          
+        elif year <5: # for undergraduate students
+            if major == 'cs' or major == 'math':
+                level = level+10 # adds 10 to the level for cs or math majors,
+            level = level + year # adds 1,2,3, or 4 to the level based on the year.
+            level = level +(.5-(.1*(reg_day))) #+0.5 for students registered before the orientation week, same as for auditors.
+            
+        else:
+            level = 15 #for graduate students, level will automatically be 15.
+        return level
+
+
+    def register_student(self, name, major, year, reg_day):
+        if int(reg_day) < 6:
+            priority = self.student_priority(major, year, reg_day)
+            self.registraion_list.root = self.registraion_list.insert(self.registraion_list.root, name, major, year, reg_day, priority)
+            self.update_student_dict()  # Update the student_dict
+
+    def remove_student(self, name):
+        if name in self.student_dict:
+            del self.student_dict[name]
+
+    def get_student_dict(self):
+        return self.student_dict
+
+if __name__ == "__main__":
+    reg_stud = stud_registration()
+
+    # Insert students
+    reg_stud.register_student('Alice', 'cs', 3, 3)
+    reg_stud.register_student('Bob', 'math', 2, 4)
+    reg_stud.register_student('Charlie', 'art', 2, 1)
+    reg_stud.register_student('David', 'cs', 3, 2)
+    reg_stud.register_student('Eve', 'art',  5, 1)
+    reg_stud.register_student('Frank', 'cs',  0, 1)
+
+    reg_stud.remove_student('Eve')
+
+    student_dict = reg_stud.get_student_dict()
+    for name, student_info in student_dict.items():
+        print(f"Name: {name}, Major: {student_info['major']}, Year: {student_info['year']}, Reg Day: {student_info['reg_day']}, Priority: {student_info['priority']}")
+
+##################################################################################################
+
+# class Node deals with the information about the relation and information that each node contains
+class Node:
+    def __init__(self, name, major, year, reg_day, priority):
+        self.name = name # student's name
+        self.major = major # major of the student
+        self.year = year # the year the student is in
+        self.reg_day = reg_day # day of registration
+        self.priority = priority # used in comparsion based analysis for developing priority
+
+        # when inputing a node there is no child attached
+        self.left = None
+        self.right = None
+        self.height = 1 # will be used to help determine rebalancing
+
+
+# class AVL_Tree contains information about the structure of AVL_Tree and how to maintain it
+# such as the rotation, insertion, and deletion form the tree
+class AVL_Tree:
+    def __init__(self):
+        self.root = None # initially, the tree is empty because we have not put in any new students
+        self.name_to_node = {} # Dictionary to map names to nodes
+        # determines the tree height of each subtree, helps to determine if the subtree needs to be rotated and in which direction
+    def tree_height(self, node):
+        if node is None:
+            return 0
+        left_height = self.tree_height(node.left) # getting the height of the left subtree
+        right_height = self.tree_height(node.right) # getting the height of the right subtree
+        return max(left_height, right_height) + 1 # return the subtree which has the largest depth (adding 1 since we start our count at 0)
+
+
+    def left_left_rotation(self, node):
+        new_parent = node.right # setting the right child as the pivot/new parent
+        temp_var = new_parent.left # temparary variable that will be reattached when tree has been rotated
+        new_parent.left = node # setting parent node as left child
+        node.right = temp_var # since the node is going to be smaller than the temp var, it is going to be placed as right child
+
+
+        # since we repositioned the parent node and the right child's position, we need to update the height of each
+        node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1
+        new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+        # return the new_parent for recalculation to see if the tree is now balanced
+        return new_parent
+    
+    def right_right_rotation(self, node):
+        new_parent = node.left # setting the left child as the pivot/new parent
+        temp_var = new_parent.right # temparary variable that will be reattached when tree has been rotated
+        new_parent.right = node # setting parent node as right child
+        node.left = temp_var # since the node is going to be bigger than the temp var, it is going to be placed as left child
+
+        # since we repositioned the parent node and the right child's position, we need to update the height of each
+        node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1
+        new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+        # return the new_parent for recalculation to see if the tree is now balanced
+        return new_parent
+
+
+    def left_right_rotation(self, node):
+        node.left = self.left_left_rotation(node.left)
+        return self.right_right_rotation(node)
+
+
+    def right_left_rotation(self, node):
+        node.right = self.right_right_rotation(node.right)
+        return self.left_left_rotation(node)
+        # inserting a new student into the AVL tree
+    def insert(self, parent_node, name, major, year, reg_day, priority):
+        # set the student to the root node if it is going to be ther first thing in the list
+        if parent_node is None:
+        # in here we care using the node class to create the root node
+            new_node = Node(name, major, year, reg_day, priority)
+            self.name_to_node[name] = new_node # Add to the dictionary
+            return new_node
+
+        # We are inserting the following students based on their priority value
+        # the new student has a lower priority value than the students already in the tree
+        if priority < parent_node.priority:
+            parent_node.left = self.insert(parent_node.left, name, major, year, reg_day, priority)
+        # the new student has a higher priority value than the students already in the tree
+        else:
+            parent_node.right = self.insert(parent_node.right, name, major, year, reg_day, priority)
+
+
+        # once we add the new node we need to update the height of our tree that will be used to determine
+        # balance of our new tree
+        parent_node.height = max(self.tree_height(parent_node.left), self.tree_height(parent_node.right)) + 1
+        # if the balance is greater than 1 or smaller than -1 (so 2 or -2) means we are no longer balanced
+        # thus we need to rotate the nodes to rebalance the tree such that it is between -1>= x =<1
+        balance = self.tree_height(parent_node.left) - self.tree_height(parent_node.right)
+        # there is a string of left child that outweighs how many right child there is in the subtree
+        if balance > 1:
+            if priority < parent_node.left.priority:
+                return self.right_right_rotation(parent_node)
+            else:
+                return self.left_right_rotation(parent_node)
+        # there is a string of right child that outweighs how many left child there is in the subtree
+        if balance < -1:
+            if priority > parent_node.right.priority:
+                return self.left_left_rotation(parent_node)
+            else:
+                return self.right_left_rotation(parent_node)
+
+
+        return parent_node
+
+
+    def min_value_node(self, node):
+        if node is None or node.left is None:
+            return node
+        return self.min_value_node(node.left)
+    
+    def delete(self, parent_node, name, priority):
+        if parent_node is None:
+            return None
+        if parent_node.priority > priority:
+            parent_node.right = self.delete(parent_node.left, name, priority)
+        elif parent_node.priority < priority:
+            parent_node.left = self.delete(parent_node.left, name, priority)
+        else:
+            if parent_node.name != name:
+
+
+            # when node with matching name is found
+                if parent_node.left is None:
+                    return parent_node.right
+                elif parent_node.right is None:
+                    return parent_node.left
+                
+            # Node with two children, get the in-order successor
+            temp = self.min_value_node(parent_node.right)
+            parent_node.name = temp.name
+            parent_node.major = temp.major
+            parent_node.year = temp.year
+            parent_node.reg_day = temp.reg_day
+            parent_node.priority = temp.priority
+            parent_node.right = self.delete(parent_node.right, temp.name, temp.priority)
+
+
+
+
+        parent_node.height = max(self.tree_height(parent_node.left), self.tree_height(parent_node.right)) + 1
+        # if the balance is greater than 1 or smaller than -1 (so 2 or -2) means we are no longer balanced
+        # thus we need to rotate the nodes to rebalance the tree such that it is between -1>= x =<1
+        balance = self.tree_height(parent_node.left) - self.tree_height(parent_node.right)
+        # there is a string of left child that outweighs how many right child there is in the subtree
+        if balance > 1:
+            if priority < parent_node.left.priority:
+                return self.right_right_rotation(parent_node)
+            else:
+                return self.left_right_rotation(parent_node)
+        # there is a string of right child that outweighs how many left child there is in the subtree
+        if balance < -1:
+            if priority > parent_node.right.priority:
+                return self.left_left_rotation(parent_node)
+            else:
+                return self.right_left_rotation(parent_node)
+
+
+    def delete_by_name(self, name, priority):
+        if name in self.name_to_node:
+            node = self.name_to_node[name] # Get the node from the dictionary
+            self.root = self.delete(self.root, name, node.priority)
+            self.name_to_node[name] # Remove from the dictionary
+
+    def get_all_students(self):
+        admitted_students = {}
+        self.collect_students(self.root, admitted_students)
+        return admitted_students
+
+
+    def collect_students(self, node, admitted_students):
+        if node is None:
+            return
+        self.collect_students(node.left, admitted_students)
+        admitted_students[node.name] = (node.major, node.year, node.reg_day, node.priority)
+        self.collect_students(node.right, admitted_students)
+
+
+    def print_name_to_node(self):
+        for name, node in self.name_to_node.items():
+            print(f"Name: {name}, Priority: {node.priority}")
+
+
+    def print_tree(self, node):
+        if node:
+            self.print_tree(node.right)
+            self.name_to_node[node.name] = (node.major, node.year, node.reg_day, node.priority)
+            self.print_tree(node.left)
+
+
+class stud_registration:
+    def __init__(self):
+        self.registraion_list = AVL_Tree()
+
+
+    def student_priority(self, major, year, reg_day):
+        level = 0 #reset the level for each function call
+        if year == 0: #for auditors
+            level = level + (.5-(.1*(reg_day))) # level will equal 0.5 for registrations before orientation week, 0.4 for registrations on the first day, etc.
+          
+        elif year <5: # for undergraduate students
+            if major == 'cs' or major == 'math':
+                level = level+10 # adds 10 to the level for cs or math majors,
+            level = level + year # adds 1,2,3, or 4 to the level based on the year.
+            level = level +(.5-(.1*(reg_day))) #+0.5 for students registered before the orientation week, same as for auditors.
+            
+        else:
+            level = 15 #for graduate students, level will automatically be 15.
+        return level
+
+
+    def register_student(self, name, major, year, reg_day):
+        if int(reg_day) < 6:
+            priority = self.student_priority(major, year, reg_day)
+            self.registraion_list.root = self.registraion_list.insert(self.registraion_list.root, name, major, year, reg_day, priority)
+
+
+    def remove_student(self, name, major, year, reg_day):
+        priority = self.student_priority(major, year, reg_day)
+        self.registraion_list.delete_by_name(name, priority)
+
+
+
+
+if __name__ == "__main__":
+    reg_stud = stud_registration()
+
+
+    # Insert students
+    reg_stud.register_student('Alice', 'cs', 3, 3)
+    reg_stud.register_student('Bob', 'math', 2, 4)
+    reg_stud.register_student('Charlie','art', 2, 1)
+    reg_stud.register_student('David', 'cs', 3, 2)
+    reg_stud.register_student('Eve', 'art', 5, 1)
+    reg_stud.register_student('Frank', 'cs', 0, 1)
+    reg_stud.remove_student('Alice', 'cs', 3, 3)
+
+
+    print("Registration List:")
+    all_students = reg_stud.registraion_list.get_all_students()
+    print(all_students)
+
+
+    reg_stud.registraion_list.print_tree(reg_stud.registraion_list.root)
+
+##################################################################################################
+
+# class Node deals with the information about the relation and information that each node contains 
+class Node:
+    def __init__(self, name, major, year, reg_day, priority):
+        self.name = name # student's name
+        self.major = major # major of the student
+        self.year = year # the year the student is in
+        self.reg_day = reg_day # day of registration 
+        self.priority = priority # used in comparsion based analysis for developing priority 
+
+        # when inputing a node there is no child attached 
+        self.left = None 
+        self.right = None
+        self.height = 1 # will be used to help determine rebalancing 
+
+# class AVL_Tree contains information about the structure of AVL_Tree and how to maintain it
+# such as the rotation, insertion, and deletion form the tree
+class AVL_Tree:
+    def __init__(self):
+        self.root = None # initially, the tree is empty because we have not put in any new students 
+
+    # determines the tree height of each subtree, helps to determine if the subtree needs to be rotated and in which direction
+    def tree_height(self, node):
+        if node is None:
+            return 0
+        left_height = self.tree_height(node.left) # getting the height of the left subtree
+        right_height = self.tree_height(node.right) # getting the height of the right subtree
+        return max(left_height, right_height) + 1 # return the subtree which has the largest depth (adding 1 since we start our count at 0)
+    
+    def left_left_rotation(self, node):
+        new_parent = node.right # setting the right child as the pivot/new parent
+        temp_var = new_parent.left # temparary variable that will be reattached when tree has been rotated
+        new_parent.left = node # setting parent node as left child
+        node.right = temp_var # since the node is going to be smaller than the temp var, it is going to be placed as right child
+
+        # since we repositioned the parent node and the right child's position, we need to update the height of each
+        node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1 
+        new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+        # return the new_parent for recalculation to see if the tree is now balanced
+        return new_parent
+    
+    def right_right_rotation(self, node):
+        new_parent = node.left # setting the left child as the pivot/new parent
+        temp_var = new_parent.right # temparary variable that will be reattached when tree has been rotated
+        new_parent.right = node # setting parent node as right child
+        node.left = temp_var # since the node is going to be bigger than the temp var, it is going to be placed as left child
+
+        # since we repositioned the parent node and the right child's position, we need to update the height of each
+        node.height = max(self.tree_height(node.left), self.tree_height(node.right)) + 1
+        new_parent.height = max(self.tree_height(new_parent.left), self.tree_height(new_parent.right)) + 1
+
+        # return the new_parent for recalculation to see if the tree is now balanced
+        return new_parent
+
+    def left_right_rotation(self, node):
+        node.left = self.left_left_rotation(node.left)
+        return self.right_right_rotation(node)
+
+    def right_left_rotation(self, node):
+        node.right = self.right_right_rotation(node.right)
+        return self.left_left_rotation(node)
+ 
+    # inserting a new student into the AVL tree
+    def insert(self, parent_node, name, major, year, reg_day, priority):
+        # set the student to the root node if it is going to be ther first thing in the list 
+        if parent_node is None:
+            # in here we care using the node class to create the root node
+            return Node(name, major, year, reg_day, priority)  
+
+        # We are inserting the following students based on their priority value
+        # the new student has a lower priority value than the students already in the tree
+        if priority < parent_node.priority:
+            parent_node.left = self.insert(parent_node.left, name, major, year, reg_day, priority)
+            
+        # the new student has a higher priority value than the students already in the tree
+        else:
+            parent_node.right = self.insert(parent_node.right, name, major, year, reg_day, priority)
+
+        # once we add the new node we need to update the height of our tree that will be used to determine 
+        # balance of our new tree
+        parent_node.height = max(self.tree_height(parent_node.left), self.tree_height(parent_node.right)) + 1
+       
+        # if the balance is greater than 1 or smaller than -1 (so 2 or -2) means we are no longer balanced 
+        # thus we need to rotate the nodes to rebalance the tree such that it is between -1>= x =<1
+        balance = self.tree_height(parent_node.left) - self.tree_height(parent_node.right)
+        
+        # there is a string of left child that outweighs how many right child there is in the subtree
+        if balance > 1:
+            if priority < parent_node.left.priority:
+                return self.right_right_rotation(parent_node)
+            else:
+                return self.left_right_rotation(parent_node)
+            
+        # there is a string of right child that outweighs how many left child there is in the subtree
+        if balance < -1:
+            if priority > parent_node.right.priority:
+                return self.left_left_rotation(parent_node)
+            else:
+                return self.right_left_rotation(parent_node)
+
+        return parent_node
+        
+    def print_tree(self, node):
+        if node:
+            self.print_tree(node.right)
+            print(node.name, node.major, node.year, node.reg_day, node.priority)
+            self.print_tree(node.left)
+
+class stud_registration:
+    def __init__(self):
+        self.registraion_list = AVL_Tree()
+
+
+    def student_priority(self, major, year, reg_day):
+        level = 0 #reset the level for each function call
+        if year == 0: #for auditors
+            level = level + (.5-(.1*(reg_day))) # level will equal 0.5 for registrations before orientation week, 0.4 for registrations on the first day, etc.
+          
+        elif year <5: # for undergraduate students
+            if major == 'cs' or major == 'math':
+                level = level+10 # adds 10 to the level for cs or math majors,
+            level = level + year # adds 1,2,3, or 4 to the level based on the year.
+            level = level +(.5-(.1*(reg_day))) #+0.5 for students registered before the orientation week, same as for auditors.
+            
+        else:
+            level = 15 #for graduate students, level will automatically be 15.
+        return level
+
+
+    def register_student(self, name, major, year, reg_day):
+        if int(reg_day) < 6:
+            priority = self.student_priority(major, year, reg_day)
+            self.registraion_list.root = self.registraion_list.insert(self.registraion_list.root, name, major, year, reg_day, priority)
+
+if __name__ == "__main__":
+    reg_stud = stud_registration()
+
+    # Insert students
+    reg_stud.register_student('Alice', 'cs', 3, 3)
+    reg_stud.register_student('Bob', 'math', 2, 4)
+    reg_stud.register_student('Charlie', 'art', 2, 1)
+    reg_stud.register_student('David', 'cs', 3, 2)
+    reg_stud.register_student('Eve', 'art',  5, 1)
+    reg_stud.register_student('Frank', 'cs',  0, 1)
+
+    print("Registration List:")
+    reg_stud.registraion_list.print_tree(reg_stud.registraion_list.root)
+
+
+ ##################################################################################################
 # class Node deals with the information about the relation and information that each node contains 
 class Node:
     def __init__(self, name, major, year, reg_day, priority):
@@ -293,7 +3289,7 @@ class stud_registration:
 
         return(level) #return the updated dictionary
 
-    def register_student(self, name, major, year, reg_day):
+    def register_student(self, name,year,reg_day,major):
         if int(reg_day) < 6:
             if int(year) > 4:
                 self.grad_list[name] = [(major, year, reg_day)]
@@ -314,12 +3310,12 @@ class stud_registration:
 if __name__ == "__main__":
     reg_stud = stud_registration()
     list = None
-    reg_stud.register_student('a', 'cs', 4, 3)
-    reg_stud.register_student('b', 'math', 3, 4)
-    reg_stud.register_student('c', 'cs',3, 6)
-    reg_stud.register_student('d', 'cs', 4, 2)
-    reg_stud.register_student('e', 'art',  0, 1)
-    reg_stud.register_student('f', 'cs',  4, 1)
+    reg_stud.register_student('a', 4, 3, 'cs')
+    reg_stud.register_student('b', 3, 4, 'math')
+    reg_stud.register_student('c', 3, 6, 'cs')
+    reg_stud.register_student('d', 4, 2, 'cs')
+    reg_stud.register_student('e', 0, 1, 'art')
+    reg_stud.register_student('f', 4, 1, 'cs')
 
     print("Undgrad List:")
     reg_stud.undgrad_list.print_tree(reg_stud.undgrad_list.root)
