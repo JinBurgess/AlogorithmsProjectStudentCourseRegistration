@@ -1,7 +1,7 @@
 # Student Registration System | Group_Project1
 
 **Author:** Jin YuHan Burgess, Sabrina Harris
-**Date:** 28 October 2023
+**Date:** 24 October 2023
 
 ## Introduction
 
@@ -25,7 +25,6 @@ Create an algorithm that takes in a students and order them based off thier prio
 This program requires the following Python libraries:
 
 - `numpy` (aliased as `np`)
-- `matplotlib` (aliased as `plt`)
 - `pandas` (aliased as `pd`)
 - `random`
 
@@ -91,10 +90,15 @@ random_students = [generate_random_student() for _ in range(num_students)]
 To remove a student, you can use the `remove_student` method by specifying the student's name and unique identifier.
 
 ```python
-stud = 'student7'
-if stud in name_to_identifier:
-    identifier = name_to_identifier[stud]
-    reg_stud.remove_student(stud, identifier)
+random.seed(101)
+
+x = admitted.sample(n = 3, replace = False)
+print(x)
+
+for indx in range(len(x)):
+    stud = x._get_value(indx, 0, takeable = True) # gets student name from the sample 
+    identifier = name_to_identifier[stud] # finds the identifer that is attached to the student
+    reg_stud.remove_student(identifier) # remove student based of their identifier
 ```
 
 ## Get Admitted Students
